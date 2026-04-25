@@ -53,15 +53,10 @@ function calcParamScore(diff: number, scale: number): number {
   return clamp(100 - diff * scale, 0, 100);
 }
 
-function buildTextureValue(params: WaveParams): number {
-  return params.noise * 0.6 + params.decay * 0.4 + params.harmonics * 0.8;
-}
-
-function circularPhaseDiff(a: number, b: number): number {
-  const tau = Math.PI * 2;
-  let diff = Math.abs(a - b) % tau;
-  if (diff > Math.PI) diff = tau - diff;
-  return diff;
+function circularPhaseStepDiff(a: number, b: number): number {
+  // phaseStep is 0 to 15. The circular difference is at most 8.
+  const diff = Math.abs(a - b);
+  return Math.min(diff, 16 - diff);
 }
 
 export function calcAdvancedScoreWithBreakdown(
@@ -69,7 +64,7 @@ export function calcAdvancedScoreWithBreakdown(
   order: OrderTemplate,
   activeEvent?: string | null
 ): { finalScore: number; breakdown: ScoreBreakdown; bestShift: number } {
-  const targetParams = quantizeWaveParams(order.targetParams);
+  const targetParams = quantizeWaveParams(order.targetParams as WaveParams);
   const currentParams = quantizeWaveParams(drinkStateToWaveParams(drink));
 
   const targetWave = generateWave(targetParams);
@@ -77,37 +72,54 @@ export function calcAdvancedScoreWithBreakdown(
 
   let shiftWindow = getPhaseToleranceSamples(order, targetWave.length);
   if (activeEvent === "rainy_day") {
-    shiftWindow = Math.floor(shiftWindow * 1.5); // More tolerant phase matching on rainy day
+    shiftWindow = Math.floor(shiftWindow * 1.5);
+  }
+  
+  // Bitters apply phase tolerance
+  if (drink.actions.some(a => a.type === "add_bitters")) {
+    shiftWindow = Math.floor(shiftWindow * 1.8);
   }
 
   const bestShiftResult = getBestShiftMse(targetWave, currentWave, shiftWindow);
-  const shapeScore = clamp(100 - bestShiftResult.mse * 170, 0, 100);
-  const amplitudeScore = calcParamScore(Math.abs(targetParams.amplitude - currentParams.amplitude), 180);
-  const frequencyScore = calcParamScore(Math.abs(targetParams.frequency - currentParams.frequency), 190);
-
+  
+  // 1. Shape: baseShape match + Shifted MSE
+  const baseShapePenalty = targetParams.baseShape !== currentParams.baseShape ? 30 : 0;
+  const shapeScore = clamp(100 - bestShiftResult.mse * 170 - baseShapePenalty, 0, 100);
+  
+  // 2. Amplitude: scale is 0-100, so diff can be up to 100.
+  const amplitudeScore = calcParamScore(Math.abs(targetParams.amplitude - currentParams.amplitude), 1.5);
+  
+  // 3. Period (frequency): periodLevel is 1-16
+  const periodScore = calcParamScore(Math.abs(targetParams.periodLevel - currentParams.periodLevel), 10);
+  
+  // 4. Phase: phaseStep circular diff (max 8)
   const normalizedShift = shiftWindow > 0 ? Math.abs(bestShiftResult.shift) / shiftWindow : 0;
-  const phaseDiff = circularPhaseDiff(targetParams.phase, currentParams.phase);
-  const phaseScore = clamp(100 - phaseDiff * 30 - normalizedShift * 12, 0, 100);
-
-  const textureTarget = buildTextureValue(targetParams);
-  const textureCurrent = buildTextureValue(currentParams);
-  const textureScore = calcParamScore(Math.abs(textureTarget - textureCurrent), 90);
+  const phaseStepDiff = circularPhaseStepDiff(targetParams.phaseStep, currentParams.phaseStep);
+  const phaseScore = clamp(100 - phaseStepDiff * 8 - normalizedShift * 15, 0, 100);
+  
+  // 5. Edge Sharpness: scale is 0-100
+  const edgeScore = calcParamScore(Math.abs(targetParams.edgeSharpness - currentParams.edgeSharpness), 1.5);
+  
+  // 6. Noise: scale is 0-100
+  const noiseScore = calcParamScore(Math.abs(targetParams.noiseLevel - currentParams.noiseLevel), 1.5);
 
   const finalScore =
-    shapeScore * 0.62 +
-    amplitudeScore * 0.1 +
-    frequencyScore * 0.15 +
-    phaseScore * 0.08 +
-    textureScore * 0.05;
+    shapeScore * 0.40 +
+    amplitudeScore * 0.15 +
+    periodScore * 0.15 +
+    phaseScore * 0.10 +
+    edgeScore * 0.10 +
+    noiseScore * 0.10;
 
   return {
     finalScore: Math.round(clamp(finalScore, 0, 100)),
     breakdown: {
       shape: Math.round(shapeScore),
       amplitude: Math.round(amplitudeScore),
-      frequency: Math.round(frequencyScore),
+      period: Math.round(periodScore),
       phase: Math.round(phaseScore),
-      texture: Math.round(textureScore),
+      edge: Math.round(edgeScore),
+      noise: Math.round(noiseScore),
     },
     bestShift: bestShiftResult.shift,
   };

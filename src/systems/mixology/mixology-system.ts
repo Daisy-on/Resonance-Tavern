@@ -38,21 +38,14 @@ export function applyMixAction(state: DrinkState, action: MixAction): DrinkState
       newState.baseWaveShape = ing.baseWaveShape || "sine";
     }
 
-    newState.strength = clamp(newState.strength + (ing.strength || 0), 0, 100);
-    newState.sweetness = clamp(newState.sweetness + (ing.sweetness || 0), 0, 100);
-    newState.acidity = clamp(newState.acidity + (ing.acidity || 0), 0, 100);
-    newState.temperature = clamp(newState.temperature + (ing.temperature || 0), -20, 50);
-    newState.sparkle = clamp(newState.sparkle + (ing.sparkle || 0), 0, 100);
+    newState.amplitude = clamp(newState.amplitude + (ing.amplitude || 0), 0, 100);
+    newState.periodLevel = clamp(newState.periodLevel + (ing.periodLevel || 0), 1, 16);
+    newState.phaseStep = (newState.phaseStep + (ing.phaseStep || 0)) % 16;
+    newState.edgeSharpness = clamp(newState.edgeSharpness + (ing.edgeSharpness || 0), 0, 100);
+    newState.noiseLevel = clamp(newState.noiseLevel + (ing.noiseLevel || 0), 0, 100);
+    newState.harmonics = clamp(newState.harmonics + (ing.harmonics || 0), 0, 100);
+    newState.decay = clamp(newState.decay + (ing.decay || 0), 0, 100);
     newState.volume = clamp(newState.volume + (ing.volume || 0), 0, newState.maxVolume);
-
-    if (ing.id === "ice_cube") {
-      newState.dilution = clamp(newState.dilution + 8, 0, 100);
-      newState.temperature = clamp(newState.temperature - 8, -20, 50);
-    }
-
-    if (ing.id === "bitters") {
-      newState.oxidation = clamp(newState.oxidation + 10, 0, 100);
-    }
   };
 
   switch (action.type) {
@@ -87,37 +80,24 @@ export function applyMixAction(state: DrinkState, action: MixAction): DrinkState
       applyIngredient("ice_cube", AdditivesDB);
       break;
     case "stir":
-      // Backward compatibility: old stir behaves as clockwise stir.
-      newState.phaseOffset += PHASE_STEP;
-      break;
     case "stir_cw":
-      newState.phaseOffset += PHASE_STEP;
+      newState.phaseStep = (newState.phaseStep + 1) % 16;
       break;
     case "stir_ccw":
-      newState.phaseOffset -= PHASE_STEP;
+      newState.phaseStep = (newState.phaseStep - 1 + 16) % 16;
       break;
     case "shake":
-      newState.sparkle = clamp(newState.sparkle + 10, 0, 100);
-      newState.blend = clamp(newState.blend + 8, 0, 100);
+      newState.harmonics = clamp(newState.harmonics + 20, 0, 100);
       break;
-    case "muddle":
-      newState.acidity = clamp(newState.acidity + 6, 0, 100);
-      newState.aroma = clamp(newState.aroma + 12, 0, 100);
-      break;
-    case "pour_precise":
-      newState.blend = clamp(newState.blend + 3, 0, 100);
+    case "measure_cup":
+      newState.noiseLevel = Math.max(0, newState.noiseLevel - 30);
+      newState.edgeSharpness = Math.max(0, newState.edgeSharpness - 30);
       break;
     case "flame":
-      newState.temperature = clamp(newState.temperature + 8, -20, 50);
-      newState.smoke = clamp(newState.smoke + 15, 0, 100);
+      newState.decay = clamp(newState.decay - 20, 0, 100);
       break;
     case "reset":
       return createEmptyDrinkState();
-  }
-
-  // Keep phase in a stable range to avoid precision drift in long sessions.
-  if (newState.phaseOffset > Math.PI * 2 || newState.phaseOffset < -Math.PI * 2) {
-    newState.phaseOffset %= Math.PI * 2;
   }
 
   return newState;

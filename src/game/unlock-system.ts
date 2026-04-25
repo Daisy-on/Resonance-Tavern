@@ -5,22 +5,20 @@ const BASE_UNLOCKS = [
   "gin",
   "whisky",
   "simple_syrup",
-  "lemon_juice",
-  "soda_water",
-  "tonic_essence",
   "ice_cube",
+  "tonic_essence",
   "stir_tool",
 ];
 
+const DAY_3_UNLOCKS = ["lemon_juice", "soda_water"];
 const DAY_4_UNLOCKS = ["rum"];
-const DAY_7_UNLOCKS = ["bitters", "shake_tool"];
-const DAY_10_UNLOCKS = ["flame_tool", "muddle_tool", "precision_tool"];
+const DAY_8_UNLOCKS = ["measure_cup", "shake_tool", "flame_tool", "bitters"];
 
 export function getUnlockedInventoryByDay(day: number): string[] {
   const unlocked = [...BASE_UNLOCKS];
+  if (day >= 3) unlocked.push(...DAY_3_UNLOCKS);
   if (day >= 4) unlocked.push(...DAY_4_UNLOCKS);
-  if (day >= 7) unlocked.push(...DAY_7_UNLOCKS);
-  if (day >= 10) unlocked.push(...DAY_10_UNLOCKS);
+  if (day >= 8) unlocked.push(...DAY_8_UNLOCKS);
   return unlocked;
 }
 

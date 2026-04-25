@@ -1,6 +1,6 @@
 import type { GameState } from "../../game/game-state";
 import { GuestsDB } from "../../content/guests";
-import { OrdersDB, type OrderTemplate } from "../../content/orders";
+import { generateProceduralOrder, type OrderTemplate } from "../../content/orders";
 
 export type GuestOrder = {
   guestId: string;
@@ -24,42 +24,9 @@ export function generateNextGuest(state: GameState) {
   // Update state
   state.currentGuestId = guestId;
   
-  const minDifficulty = state.day >= 8 ? 2 : 1;
-  const maxDifficulty = state.day >= 8 ? 5 : state.day >= 4 ? 4 : 2;
-
-  // Prefer guest-themed orders first, then fallback to global pool
-  const guestOrders = OrdersDB.filter(
-    (o) =>
-      o.guestId === guestId &&
-      o.difficulty >= minDifficulty &&
-      o.difficulty <= maxDifficulty,
-  );
-  const pool =
-    guestOrders.length > 0
-      ? guestOrders
-      : OrdersDB.filter((o) => o.difficulty >= minDifficulty && o.difficulty <= maxDifficulty);
-  const baseOrder = pool[Math.floor(Math.random() * pool.length)];
-    
-  // Add dynamic fluctuation based on order variance
-  const fluctuation = baseOrder.allowVariance || 0;
-  const applyFluctuation = (val: number, min = 0, max = Number.POSITIVE_INFINITY) => {
-    const sign = Math.random() > 0.5 ? 1 : -1;
-    return Math.min(max, Math.max(min, val + (val * fluctuation * sign)));
-  };
+  // Generate procedural order based on day
+  const dynamicOrder = generateProceduralOrder(state.day, guestId);
   
-  const dynamicOrder: OrderTemplate = {
-    ...baseOrder,
-    targetParams: {
-      ...baseOrder.targetParams,
-      amplitude: applyFluctuation(baseOrder.targetParams.amplitude, 0.2, 1.5),
-      frequency: applyFluctuation(baseOrder.targetParams.frequency, 0.5, 3),
-      decay: applyFluctuation(baseOrder.targetParams.decay, 0, 1),
-      phase: applyFluctuation(baseOrder.targetParams.phase, -Math.PI * 2, Math.PI * 2),
-      harmonics: applyFluctuation(baseOrder.targetParams.harmonics, 0, 1),
-      noise: applyFluctuation(baseOrder.targetParams.noise, 0, 1),
-    }
-  };
-
   state.currentOrder = dynamicOrder;
   
   // Track affinity
@@ -102,7 +69,5 @@ export function getGuestDialogue(state: GameState): string {
   else if (affinity >= 21) pool = levels.friendly;
   else pool = levels.neutral;
   
-  // If we have an order mood text, we might want to blend it or use it as priority
-  // For now, let's just pick a random one from the affinity pool
   return pool[Math.floor(Math.random() * pool.length)];
 }

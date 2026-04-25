@@ -31,16 +31,17 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <button class="btn" id="btn-rum" data-action="select_rum">朗姆</button>
         
         <h4 style="margin:10px 0; color:#ff73a8; font-family:'Courier New', Courier, monospace;">添加剂 ADDITIVES</h4>
-        <button class="btn" data-action="add_syrup">糖浆 (频率+)</button>
-        <button class="btn" data-action="add_lemon">柠檬 (酸度+)</button>
-        <button class="btn" data-action="add_ice">冰块 (温度-)</button>
-        <button class="btn" data-action="add_soda">苏打 (气泡+)</button>
+        <button class="btn" data-action="add_syrup">糖浆 (周期-)</button>
+        <button class="btn" data-action="add_ice">冰块 (振幅-)</button>
         <button class="btn" data-action="add_tonic">捣拌棒 (周期+)</button>
-        <button class="btn" data-action="add_bitters">苦精 (微调)</button>
         <button class="btn" data-action="stir_cw">顺时针搅拌 (相位+)</button>
         <button class="btn" data-action="stir_ccw">逆时针搅拌 (相位-)</button>
-        <button class="btn" data-action="shake">摇壶</button>
-        <button class="btn" data-action="pour_precise">精准注入</button>
+        <button class="btn" data-action="add_lemon">柠檬 (边缘+)</button>
+        <button class="btn" data-action="add_soda">苏打水 (毛刺+)</button>
+        <button class="btn" data-action="add_bitters">苦精 (容错+)</button>
+        <button class="btn" data-action="shake">摇壶 (谐波+)</button>
+        <button class="btn" data-action="measure_cup">量杯 (平滑++)</button>
+        <button class="btn" data-action="flame">喷枪 (拖尾+)</button>
         
         <hr style="border-color:#73f2ff; margin: 10px 0; opacity: 0.3;">
         <button class="btn" data-action="reset">重做</button>
@@ -123,8 +124,8 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       今日净收益: $${(state.dailyLedger.orderIncomeToday - state.dailyLedger.ingredientCostToday - state.dailyLedger.rentToday).toFixed(1)}<br/>
       今日冰耗电: ${state.dailyLedger.powerFromIceToday.toFixed(1)}<br/>
       <hr style="border-color:#73f2ff; margin: 8px 0; opacity: 0.2;">
-      容量: ${state.drink.volume}ml | 温度: ${state.drink.temperature}°C<br/>
-      相位偏移: ${state.drink.phaseOffset.toFixed(2)} rad
+      当前参数：振幅 ${state.drink.amplitude} | 周期 ${state.drink.periodLevel} | 相位 ${state.drink.phaseStep} <br/>
+      高阶属性：边缘 ${state.drink.edgeSharpness} | 毛刺 ${state.drink.noiseLevel} | 谐波 ${state.drink.harmonics} | 拖尾 ${state.drink.decay}
     `;
   }
 
@@ -137,12 +138,13 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
 
     if (!isMixingView) {
       const allUnlockables = [
+      { id: "lemon_juice", name: "柠檬 (Day 3)", day: 3 },
+      { id: "soda_water", name: "苏打水 (Day 3)", day: 3 },
       { id: "rum", name: "朗姆酒 (Day 4)", day: 4 },
-      { id: "bitters", name: "苦精 (Day 7)", day: 7 },
-      { id: "shake_tool", name: "摇壶 (Day 7)", day: 7 },
-      { id: "muddle_tool", name: "压碎棒 (Day 10)", day: 10 },
-      { id: "flame_tool", name: "喷枪 (Day 10)", day: 10 },
-      { id: "precision_tool", name: "精准注入器 (Day 10)", day: 10 },
+      { id: "measure_cup", name: "量杯 (Day 8)", day: 8 },
+      { id: "shake_tool", name: "摇壶 (Day 8)", day: 8 },
+      { id: "flame_tool", name: "喷枪 (Day 8)", day: 8 },
+      { id: "bitters", name: "苦精 (Day 8)", day: 8 },
     ];
 
     const lockedItems = allUnlockables.filter(item => !state.inventory.includes(item.id));
@@ -190,7 +192,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       stir_cw: "stir_tool",
       stir_ccw: "stir_tool",
       shake: "shake_tool",
-      pour_precise: "precision_tool",
+      measure_cup: "measure_cup",
       flame: "flame_tool",
     };
     const requiredUnlock = action ? actionUnlockMap[action] : null;
@@ -268,7 +270,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         if (scoreEl) {
           const breakdown = state.lastScoreBreakdown;
           scoreEl.innerHTML = `匹配度: <strong style="color:#ff73a8; font-size:1.5em;">${state.lastScore.toFixed(0)}%</strong><br/>
-            ${breakdown ? `形状 ${breakdown.shape} / 振幅 ${breakdown.amplitude} / 频率 ${breakdown.frequency} / 相位 ${breakdown.phase} / 纹理 ${breakdown.texture}` : ""}`;
+            ${breakdown ? `形状 ${breakdown.shape} / 振幅 ${breakdown.amplitude} / 周期 ${breakdown.period} / 相位 ${breakdown.phase} / 边缘 ${breakdown.edge} / 毛刺 ${breakdown.noise}` : ""}`;
         }
 
         let feedback = "";

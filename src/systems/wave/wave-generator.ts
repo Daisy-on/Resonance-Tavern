@@ -1,52 +1,42 @@
 import type { DrinkState } from "../mixology/drink-state";
 
 export type WaveParams = {
-  amplitude: number;
-  frequency: number;
-  decay: number;
-  noise: number;
-  symmetry: number;
-  phase: number;
-  harmonics: number;
-  baseShape: "sine" | "triangle" | "square";
+  amplitude: number;       // 0-100
+  periodLevel: number;     // 1-16
+  phaseStep: number;       // 0-15
+  edgeSharpness: number;   // 0-100
+  noiseLevel: number;      // 0-100
+  harmonics: number;       // 0-100
+  decay: number;           // 0-100
+  baseShape: "sine" | "triangle" | "square" | "sawtooth";
 };
 
 const FREQUENCY_MIN = 0.75;
 const FREQUENCY_MAX = 2.5;
-const FREQUENCY_STEPS = 16;
-const PHASE_STEPS = 16;
 const TAU = Math.PI * 2;
-
-function quantize(value: number, min: number, max: number, steps: number): number {
-  const clamped = Math.max(min, Math.min(max, value));
-  const t = (clamped - min) / (max - min);
-  const snapped = Math.round(t * (steps - 1)) / (steps - 1);
-  return min + snapped * (max - min);
-}
-
-function normalizeAngle(angle: number): number {
-  let out = angle % TAU;
-  if (out < 0) out += TAU;
-  return out;
-}
 
 export function quantizeWaveParams(params: WaveParams): WaveParams {
   return {
     ...params,
-    frequency: quantize(params.frequency, FREQUENCY_MIN, FREQUENCY_MAX, FREQUENCY_STEPS),
-    phase: quantize(normalizeAngle(params.phase), 0, TAU, PHASE_STEPS),
+    amplitude: Math.max(0, Math.min(100, params.amplitude)),
+    periodLevel: Math.max(1, Math.min(16, Math.round(params.periodLevel))),
+    phaseStep: Math.max(0, Math.min(15, Math.round(params.phaseStep))),
+    edgeSharpness: Math.max(0, Math.min(100, params.edgeSharpness)),
+    noiseLevel: Math.max(0, Math.min(100, params.noiseLevel)),
+    harmonics: Math.max(0, Math.min(100, params.harmonics)),
+    decay: Math.max(0, Math.min(100, params.decay)),
   };
 }
 
 export function drinkStateToWaveParams(drink: DrinkState): WaveParams {
   return quantizeWaveParams({
-    amplitude: 0.4 + drink.strength / 80,
-    frequency: 1.0 + drink.sweetness / 35,
-    decay: 0.1 + (100 - drink.temperature) / 150,
-    noise: drink.sparkle / 120,
-    symmetry: 1.0 - drink.acidity / 140, // 1.0 is symmetric
-    phase: drink.phaseOffset,
-    harmonics: Math.max(0, Math.min(1, (drink.blend + drink.oxidation * 0.5) / 120)),
+    amplitude: drink.amplitude,
+    periodLevel: drink.periodLevel,
+    phaseStep: drink.phaseStep,
+    edgeSharpness: drink.edgeSharpness,
+    noiseLevel: drink.noiseLevel,
+    harmonics: drink.harmonics,
+    decay: drink.decay,
     baseShape: drink.baseWaveShape || "sine",
   });
 }
@@ -54,40 +44,62 @@ export function drinkStateToWaveParams(drink: DrinkState): WaveParams {
 export function generateWave(params: WaveParams, sampleCount = 128): number[] {
   const q = quantizeWaveParams(params);
   const out: number[] = [];
+
+  // map periodLevel (1-16) to frequency (FREQUENCY_MAX to FREQUENCY_MIN)
+  const freqRange = FREQUENCY_MAX - FREQUENCY_MIN;
+  const frequency = FREQUENCY_MAX - ((q.periodLevel - 1) / 15) * freqRange;
+
+  const phase = q.phaseStep * (TAU / 16);
+  const visualAmplitude = 0.2 + (q.amplitude / 100) * 1.4; // 0.2 to 1.6
+  const asymmetry = (q.edgeSharpness / 100) * 0.45; // 0 to 0.45
+  const noiseMagnitude = (q.noiseLevel / 100) * 0.8; // 0 to 0.8
+  const harmonicsMagnitude = q.harmonics / 100; // 0 to 1.0
+  const decayMagnitude = (q.decay / 100) * 0.9; // 0 to 0.9
+
   for (let i = 0; i < sampleCount; i += 1) {
     const t = i / sampleCount; // 0 to 1
-    const phase = t * TAU * q.frequency + q.phase;
-    
+    const currentPhase = t * TAU * frequency + phase;
+
     let base = 0;
     if (q.baseShape === "sine") {
-      base = Math.sin(phase);
+      base = Math.sin(currentPhase);
     } else if (q.baseShape === "triangle") {
-      base = Math.abs((phase / Math.PI) % 2 - 1) * 2 - 1;
+      base = Math.abs((currentPhase / Math.PI) % 2 - 1) * 2 - 1;
     } else if (q.baseShape === "square") {
-      base = Math.sin(phase) >= 0 ? 1 : -1;
+      base = Math.sin(currentPhase) >= 0 ? 1 : -1;
+    } else if (q.baseShape === "sawtooth") {
+      // 锯齿脉冲波：平坦底座 + 弧形上升 + 垂直下降
+      let cycle = (currentPhase / TAU) % 1;
+      if (cycle < 0) cycle += 1; // 处理负相位
+
+      if (cycle < 0.5) {
+        base = -1; // 平坦底座
+      } else {
+        // 从 -1 弧形上升到 1 (使用四分之一正弦曲线模拟充电过程)
+        const t = (cycle - 0.5) * 2; // 0 to 1
+        base = -1 + 2 * Math.sin(t * Math.PI / 2);
+      }
     }
 
-    // Keep period stable while expressing acidity via cycle-local asymmetry.
-    const asymmetry = Math.max(-0.35, Math.min(0.35, (1 - q.symmetry) * 0.55));
-    // Use local phase (without q.phase) to ensure distortion stays relative to shape, not screen.
-    const localPhase = t * TAU * q.frequency;
+    // Edge Sharpness (Asymmetry)
+    const localPhase = t * TAU * frequency;
     const asymSkew = 1 + asymmetry * Math.sin(localPhase);
     base *= asymSkew;
 
-    base *= q.amplitude;
+    base *= visualAmplitude;
 
-    // Harmonics: adds higher-frequency detail for late-game complexity
-    const harmonic2 = Math.sin(phase * 2) * 0.5;
-    const harmonic3 = Math.sin(phase * 3) * 0.25;
-    const complexWave = base + (harmonic2 + harmonic3) * q.harmonics;
-    
-    // Decay: higher decay means wave shrinks faster towards the right
-    const damped = complexWave * (1 - t * q.decay);
-    
-    // Noise: Use a deterministic pseudo-random value based on index to avoid jitter
+    // Harmonics
+    const harmonic2 = Math.sin(currentPhase * 2) * 0.5;
+    const harmonic3 = Math.sin(currentPhase * 3) * 0.25;
+    const complexWave = base + (harmonic2 + harmonic3) * harmonicsMagnitude;
+
+    // Decay
+    const damped = complexWave * (1 - t * decayMagnitude);
+
+    // Noise
     const pseudoRandom = Math.sin(i * 999.9) * 0.5 + 0.5;
-    const noise = (pseudoRandom - 0.5) * q.noise;
-    
+    const noise = (pseudoRandom - 0.5) * noiseMagnitude;
+
     out.push(damped + noise);
   }
   return out;

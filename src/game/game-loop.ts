@@ -46,8 +46,7 @@ export function createGameLoop(input: GameLoopInput) {
     "stir_cw",
     "stir_ccw",
     "shake",
-    "muddle",
-    "pour_precise",
+    "measure_cup",
     "flame",
     "reset",
   ]);
@@ -161,8 +160,7 @@ export function createGameLoop(input: GameLoopInput) {
         stir_cw: "stir_tool",
         stir_ccw: "stir_tool",
         shake: "shake_tool",
-        muddle: "muddle_tool",
-        pour_precise: "precision_tool",
+        measure_cup: "measure_cup",
         flame: "flame_tool",
       };
       const requiredUnlock = actionUnlockMap[mixAction];
@@ -235,8 +233,7 @@ export function createGameLoop(input: GameLoopInput) {
         stir_cw: "stir_tool",
         stir_ccw: "stir_tool",
         shake: "shake_tool",
-        pour_precise: "precision_tool",
-        muddle: "muddle_tool",
+        measure_cup: "measure_cup",
         flame: "flame_tool",
       };
       const unlockId = unlockMap[candidate];
@@ -283,8 +280,7 @@ export function createGameLoop(input: GameLoopInput) {
     // 5. Advanced tools (Row 2)
     if (isInside(x, y, w - 380, propY + 80, 380, 100)) {
       if (x < w - 290) currentState.draggedItem = canDragAction("shake") ? "shake" : null;
-      else if (x < w - 200) currentState.draggedItem = canDragAction("pour_precise") ? "pour_precise" : null;
-      else if (x < w - 110) currentState.draggedItem = canDragAction("muddle") ? "muddle" : null;
+      else if (x < w - 200) currentState.draggedItem = canDragAction("measure_cup") ? "measure_cup" : null;
       else currentState.draggedItem = canDragAction("flame") ? "flame" : null;
       return;
     }

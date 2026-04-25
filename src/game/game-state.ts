@@ -11,9 +11,10 @@ export type ResourceState = {
 export type ScoreBreakdown = {
   shape: number;
   amplitude: number;
-  frequency: number;
+  period: number;
   phase: number;
-  texture: number;
+  edge: number;
+  noise: number;
 };
 
 export type DailyLedger = {
@@ -74,9 +75,9 @@ export function createDefaultGameState(): GameState {
     version: 2,
     day: 1,
     resources: {
-      money: 180,
-      power: 24,
-      rating: 55,
+      money: 200,
+      power: 30,
+      rating: 50,
     },
     dailyLedger: {
       ingredientCostToday: 0,
@@ -111,10 +112,8 @@ export function createDefaultGameState(): GameState {
       "gin",
       "whisky",
       "simple_syrup",
-      "lemon_juice",
-      "soda_water",
-      "tonic_essence",
       "ice_cube",
+      "tonic_essence",
       "stir_tool",
     ],
     lastScoreBreakdown: null,

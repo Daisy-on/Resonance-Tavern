@@ -72,7 +72,7 @@ export function applyDailySettlement(state: GameState): {
   state.resources.money -= rent;
   state.dailyLedger.rentToday = rent;
 
-  const MAX_POWER = 24;
+  const MAX_POWER = 30;
   let powerCost = 0;
   if (state.resources.power < MAX_POWER) {
     powerCost = MAX_POWER - state.resources.power;

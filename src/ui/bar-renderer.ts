@@ -140,6 +140,31 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   if (state.currentOrder) {
     const targetWave = generateWave(state.currentOrder.targetParams);
     drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 125, 175, 0.9)", 2, true);
+    
+    // Draw realtime hints
+    if (state.drink.baseSpirit) {
+      const tp = state.currentOrder.targetParams as any;
+      const cp = state.drink;
+      
+      let hint = "";
+      if (cp.baseWaveShape !== tp.baseShape) hint = "基础波形错误，请重做并选择正确的基酒";
+      else if (Math.abs(cp.amplitude - tp.amplitude) > 10) hint = cp.amplitude < tp.amplitude ? "振幅偏低，建议加糖浆" : "振幅偏高，建议加冰块";
+      else if (Math.abs(cp.periodLevel - tp.periodLevel) > 1) hint = cp.periodLevel < tp.periodLevel ? "周期偏短，建议用捣拌棒" : "周期偏长，建议加糖浆";
+      else if (Math.abs(cp.phaseStep - tp.phaseStep) > 1) hint = "相位不齐，建议顺/逆时针搅拌";
+      else if (cp.noiseLevel - tp.noiseLevel > 10 || cp.edgeSharpness - tp.edgeSharpness > 10) hint = "边缘或锯齿过重，建议使用量杯平滑";
+      else if (tp.noiseLevel - cp.noiseLevel > 10) hint = "毛刺不足，建议加苏打水";
+      else if (tp.edgeSharpness - cp.edgeSharpness > 10) hint = "偏斜不足，建议加柠檬";
+      else if (tp.harmonics - cp.harmonics > 10) hint = "谐波不足，建议使用摇壶";
+      else if (cp.decay - tp.decay > 10) hint = "拖尾衰减过快，建议使用喷枪";
+      
+      if (hint) {
+        ctx.fillStyle = "rgba(115, 242, 255, 0.9)";
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(`[提示] ${hint}`, w / 2, waveAreaY + waveAreaHeight + 20);
+        ctx.textAlign = "left";
+      }
+    }
   }
   if (state.drink.baseSpirit) {
     const currentParams = drinkStateToWaveParams(state.drink);
@@ -269,25 +294,17 @@ function drawAdvancedTools(ctx: CanvasRenderingContext2D, x: number, y: number, 
 
   drawPixelSprite(ctx, x + 90, y, 56, PROP_SPRITES["dropper"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("精准注入", x + 76, y - 8);
-  if (!state.inventory.includes("precision_tool")) {
+  ctx.fillText("量杯", x + 76, y - 8);
+  if (!state.inventory.includes("measure_cup")) {
     drawLockedOverlay(ctx, x + 90, y, 56, 56);
   }
 
-  // Placeholder for muddle_tool
+  // Placeholder for flame_tool
   drawPixelSprite(ctx, x + 180, y, 56, PROP_SPRITES["shaker"]); // Use shaker as placeholder
   ctx.fillStyle = "#fff";
-  ctx.fillText("压碎棒", x + 170, y - 8);
-  if (!state.inventory.includes("muddle_tool")) {
-    drawLockedOverlay(ctx, x + 180, y, 56, 56);
-  }
-
-  // Placeholder for flame_tool
-  drawPixelSprite(ctx, x + 270, y, 56, PROP_SPRITES["shaker"]); // Use shaker as placeholder
-  ctx.fillStyle = "#fff";
-  ctx.fillText("喷枪", x + 265, y - 8);
+  ctx.fillText("喷枪", x + 175, y - 8);
   if (!state.inventory.includes("flame_tool")) {
-    drawLockedOverlay(ctx, x + 270, y, 56, 56);
+    drawLockedOverlay(ctx, x + 180, y, 56, 56);
   }
 }
 
@@ -360,14 +377,10 @@ function drawDraggedPreview(ctx: CanvasRenderingContext2D, x: number, y: number,
     drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["shaker"]);
     ctx.fillStyle = "#fff";
     ctx.fillText("摇壶", -10, 30);
-  } else if (item === "pour_precise") {
+  } else if (item === "measure_cup") {
     drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["dropper"]);
     ctx.fillStyle = "#fff";
-    ctx.fillText("精准注入", -26, 30);
-  } else if (item === "muddle") {
-    drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["shaker"]);
-    ctx.fillStyle = "#fff";
-    ctx.fillText("压碎棒", -16, 30);
+    ctx.fillText("量杯", -10, 30);
   } else if (item === "flame") {
     drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["shaker"]);
     ctx.fillStyle = "#fff";

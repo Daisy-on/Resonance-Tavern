@@ -13,8 +13,7 @@ export type MixActionType =
   | "stir_cw"
   | "stir_ccw"
   | "shake"
-  | "muddle"
-  | "pour_precise"
+  | "measure_cup"
   | "flame"
   | "reset";
 
