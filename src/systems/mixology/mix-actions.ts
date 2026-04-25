@@ -1,4 +1,4 @@
-export type MixActionType = 
+export type MixActionType =
   | "select_vodka"
   | "select_gin"
   | "select_whisky"

@@ -118,34 +118,46 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   const waveAreaHeight = 320; // Taller to prevent overflow
   const waveAreaY = (h - waveAreaHeight) / 2 - 80; // Centered in viewport, slightly offset up for table
 
-  // Show order requirements
-  if (state.currentOrder) {
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.font = "italic 16px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(`“${state.currentOrder.moodText}”`, w / 2, waveAreaY - 20);
+  drawOscilloscope(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight);
+
+  // 1. Draw parameters in TOP-RIGHT of oscilloscope screen
+  if (state.drink.baseSpirit) {
+    ctx.fillStyle = "rgba(115, 242, 255, 0.7)";
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.textAlign = "right";
+    const d = state.drink;
+    ctx.fillText(`振幅:${d.amplitude} 周期:${d.periodLevel} 相位:${d.phaseStep}`, waveAreaX + waveAreaWidth - 10, waveAreaY - waveAreaHeight / 2 + 20);
+    ctx.fillText(`边缘:${d.edgeSharpness} 毛刺:${d.noiseLevel} 谐波:${d.harmonics} 拖尾:${d.decay}`, waveAreaX + waveAreaWidth - 10, waveAreaY - waveAreaHeight / 2 + 35);
     ctx.textAlign = "left";
   }
 
-  // Show event if active
+  // 2. Draw order and event info at the BOTTOM of oscilloscope screen
+  const infoY = waveAreaY + waveAreaHeight / 2 - 40;
+  if (state.currentOrder) {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    ctx.font = "italic 14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(`“${state.currentOrder.moodText}”`, w / 2, infoY);
+    ctx.textAlign = "left";
+  }
+
   if (state.activeEvent) {
     ctx.fillStyle = "#ff2d7d";
-    ctx.font = "bold 14px Arial";
+    ctx.font = "bold 13px Arial";
     ctx.textAlign = "center";
-    ctx.fillText(getEventDescription(state.activeEvent), w / 2, waveAreaY - 45);
+    ctx.fillText(getEventDescription(state.activeEvent), w / 2, infoY + 20);
     ctx.textAlign = "left";
   }
 
-  drawOscilloscope(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight);
   if (state.currentOrder) {
     const targetWave = generateWave(state.currentOrder.targetParams);
     drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 125, 175, 0.9)", 2, true);
-    
+
     // Draw realtime hints
     if (state.drink.baseSpirit) {
       const tp = state.currentOrder.targetParams as any;
       const cp = state.drink;
-      
+
       let hint = "";
       if (cp.baseWaveShape !== tp.baseShape) hint = "基础波形错误，请重做并选择正确的基酒";
       else if (Math.abs(cp.amplitude - tp.amplitude) > 10) hint = cp.amplitude < tp.amplitude ? "振幅偏低，建议加糖浆" : "振幅偏高，建议加冰块";
@@ -156,12 +168,12 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
       else if (tp.edgeSharpness - cp.edgeSharpness > 10) hint = "偏斜不足，建议加柠檬";
       else if (tp.harmonics - cp.harmonics > 10) hint = "谐波不足，建议使用摇壶";
       else if (cp.decay - tp.decay > 10) hint = "拖尾衰减过快，建议使用喷枪";
-      
+
       if (hint) {
         ctx.fillStyle = "rgba(115, 242, 255, 0.9)";
         ctx.font = "14px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(`[提示] ${hint}`, w / 2, waveAreaY + waveAreaHeight + 20);
+        ctx.fillText(`[提示] ${hint}`, w / 2, waveAreaY + waveAreaHeight / 2 - 15);
         ctx.textAlign = "left";
       }
     }

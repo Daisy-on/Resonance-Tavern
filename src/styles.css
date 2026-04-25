@@ -77,8 +77,64 @@ canvas {
 
 #dialogue-panel { bottom: 30px; left: 50%; transform: translateX(-50%); width: 50%; min-height: 120px; border-left: 8px solid #ff73a8; }
 #actions-panel { bottom: 30px; right: 30px; width: 320px; }
-#status-panel { top: 30px; left: 30px; min-width: 220px; border-top: 4px solid #73f2ff; }
-#locked-panel { top: 30px; right: 30px; width: 220px; border-top: 4px solid #ff73a8; border-color: #ff73a8; }
+#status-panel { 
+  top: 30px; 
+  left: 30px; 
+  min-width: 220px; 
+  border-top: 4px solid #73f2ff; 
+  transition: max-height 0.3s ease-out, opacity 0.3s;
+  max-height: 40px;
+  overflow: hidden;
+}
+#status-panel.expanded {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+#status-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding-bottom: 5px;
+}
+
+#table-controls {
+  position: absolute;
+  bottom: 310px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  pointer-events: auto;
+  z-index: 100;
+}
+
+.table-btn {
+  background: rgba(10, 10, 20, 0.8);
+  border: 2px solid #73f2ff;
+  color: #73f2ff;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.table-btn:hover {
+  background: #73f2ff;
+  color: #0a0a0f;
+  box-shadow: 0 0 15px #73f2ff;
+}
+
+.table-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+#locked-panel { display: none; } /* Merged into status drawer */
+#btn-profile { display: none; } /* Replaced by table-controls button */
 #result-panel { top: 50%; left: 50%; transform: translate(-50%, -50%); }
 
 /* Archive Modal Styles */

@@ -16,17 +16,28 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
   if (!isInitialized) {
     uiLayer.innerHTML = `
       <div id="status-panel" class="panel">
-        <h3 style="margin:0 0 10px 0;">共振酒吧 (Cyber Resonance)</h3>
-        <div id="status-text"></div>
+        <div id="status-toggle">
+          <h3 style="margin:0;">状态 STATUS</h3>
+          <span id="toggle-icon">[+]</span>
+        </div>
+        <div id="status-content">
+          <div id="status-text" style="margin-top:10px;"></div>
+          <hr style="border-color:#73f2ff; margin: 10px 0; opacity: 0.3;">
+          <h4 style="margin:0 0 5px 0; color:#ff73a8;">待解锁物品</h4>
+          <div id="locked-list" style="font-size:0.9em; color:#aaa; line-height:1.6;"></div>
+        </div>
       </div>
-      <div id="locked-panel" class="panel">
-        <h4 style="margin:0 0 10px 0; color:#ff73a8;">待解锁物品</h4>
-        <div id="locked-list" style="font-size:0.9em; color:#aaa; line-height:1.6;"></div>
+      
+      <div id="table-controls" style="display:none;">
+        <button class="table-btn" data-action="reset">重做</button>
+        <button class="table-btn" id="btn-submit" data-action="submit">提交上酒</button>
+        <button class="table-btn" id="btn-profile-table">档案室</button>
       </div>
+
       <div id="actions-panel" class="panel">
         <h4 style="margin:0 0 10px 0; color:#ff73a8; font-family:'Courier New', Courier, monospace;">基酒 SPIRITS</h4>
         <button class="btn" id="btn-vodka" data-action="select_vodka">伏特加</button>
-        <button class="btn" id="btn-gin" data-action="select_gin">琴酒</button>
+        <button class="btn" id="btn-gin" data-action="select_gin">金酒</button>
         <button class="btn" id="btn-whisky" data-action="select_whisky">威士忌</button>
         <button class="btn" id="btn-rum" data-action="select_rum">朗姆</button>
         
@@ -45,7 +56,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         
         <hr style="border-color:#73f2ff; margin: 10px 0; opacity: 0.3;">
         <button class="btn" data-action="reset">重做</button>
-        <button class="btn" id="btn-submit" data-action="submit" style="border-color:#ff73a8; color:#ff73a8;">提交上酒</button>
+        <button class="btn" id="btn-submit-orig" data-action="submit" style="border-color:#ff73a8; color:#ff73a8;">提交上酒</button>
       </div>
       <div id="dialogue-panel" class="panel" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom: 1px solid rgba(255,115,168,0.3);">
@@ -54,7 +65,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <div id="guest-dialogue" style="font-size:1.1em; line-height:1.4; min-height: 3em;"></div>
         <button class="btn" id="btn-next" style="margin-top:10px;">接受订单</button>
       </div>
-      <button id="btn-profile" class="btn" style="position: absolute; top: 30px; right: 280px; z-index: 100; pointer-events: auto;">档案室</button>
+      <button id="btn-profile" class="btn" style="display:none;">档案室</button>
       <div id="result-panel" class="panel" style="display:none; min-width:320px; text-align:center;">
         <h2 id="result-title" style="margin-top:0; color:#73f2ff;"></h2>
         <div id="result-score" style="margin:20px 0;"></div>
@@ -73,8 +84,19 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       const target = e.target as HTMLElement;
       if (!lastState) return;
 
+      // Handle drawer toggle
+      if (target.id === "status-toggle" || target.closest("#status-toggle")) {
+        const panel = document.getElementById("status-panel");
+        const icon = document.getElementById("toggle-icon");
+        if (panel && icon) {
+          panel.classList.toggle("expanded");
+          icon.textContent = panel.classList.contains("expanded") ? "[-]" : "[+]";
+        }
+        return;
+      }
+
       // Handle buttons with data-action
-      const actionBtn = target.closest(".btn[data-action]");
+      const actionBtn = target.closest(".btn[data-action], .table-btn[data-action]");
       if (actionBtn) {
         const action = actionBtn.getAttribute("data-action");
         dispatch(action);
@@ -85,7 +107,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       if (target.id === "btn-next" || target.closest("#btn-next")) {
         dispatch("take_order");
       }
-      if (target.id === "btn-profile" || target.closest("#btn-profile")) {
+      if (target.id === "btn-profile" || target.closest("#btn-profile") || target.id === "btn-profile-table") {
         isArchiveOpen = true;
         renderArchive(lastState);
       }
@@ -122,22 +144,14 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       今日耗材: $${state.dailyLedger.ingredientCostToday.toFixed(1)}<br/>
       今日收入: $${state.dailyLedger.orderIncomeToday.toFixed(1)}<br/>
       今日净收益: $${(state.dailyLedger.orderIncomeToday - state.dailyLedger.ingredientCostToday - state.dailyLedger.rentToday).toFixed(1)}<br/>
-      今日冰耗电: ${state.dailyLedger.powerFromIceToday.toFixed(1)}<br/>
-      <hr style="border-color:#73f2ff; margin: 8px 0; opacity: 0.2;">
-      当前参数：振幅 ${state.drink.amplitude} | 周期 ${state.drink.periodLevel} | 相位 ${state.drink.phaseStep} <br/>
-      高阶属性：边缘 ${state.drink.edgeSharpness} | 毛刺 ${state.drink.noiseLevel} | 谐波 ${state.drink.harmonics} | 拖尾 ${state.drink.decay}
+      今日冰耗电: ${state.dailyLedger.powerFromIceToday.toFixed(1)}
     `;
   }
 
-  // 1.5 Update Locked Panel
-  const lockedPanel = document.getElementById("locked-panel");
+  // 1.5 Update Locked Panel (Inside Drawer)
   const lockedList = document.getElementById("locked-list");
-  if (lockedPanel && lockedList) {
-    const isMixingView = state.orderFlow === "mixing_view";
-    lockedPanel.style.display = isMixingView ? "none" : "block";
-
-    if (!isMixingView) {
-      const allUnlockables = [
+  if (lockedList) {
+    const allUnlockables = [
       { id: "lemon_juice", name: "柠檬 (Day 3)", day: 3 },
       { id: "soda_water", name: "苏打水 (Day 3)", day: 3 },
       { id: "rum", name: "朗姆酒 (Day 4)", day: 4 },
@@ -154,28 +168,34 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         .join("");
     } else {
       lockedList.innerHTML = "<div style='color:#73f2ff;'>全部物品已解锁</div>";
-      }
     }
+  }
+
+  // 1.6 Show/Hide Table Controls
+  const tableControls = document.getElementById("table-controls");
+  if (tableControls) {
+    tableControls.style.display = state.orderFlow === "mixing_view" ? "flex" : "none";
   }
 
   // 2. Update Actions Panel (Mixing buttons)
   const isMixing = state.orderFlow === "mixing" || state.orderFlow === "guest_enter" || state.orderFlow === "mixing_view";
   const actionsPanel = document.getElementById("actions-panel");
   if (actionsPanel) {
-    // Hide original buttons in focused mixing view as we use drag and drop
+    // Hide actions panel entirely in mixing_view to avoid blocking
+    actionsPanel.style.display = state.orderFlow === "mixing_view" ? "none" : "block";
+
+    // Original buttons visibility logic
     const spiritGroup = actionsPanel.querySelectorAll("button[data-action^='select_'], button[data-action^='add_'], button[data-action='stir'], button[data-action='stir_cw'], button[data-action='stir_ccw']");
     spiritGroup.forEach(btn => {
-      (btn as HTMLElement).style.display = state.orderFlow === "mixing_view" ? "none" : "inline-block";
+      (btn as HTMLElement).style.display = "inline-block";
     });
-
-    // Also hide the headers if in mixing_view
     const headers = actionsPanel.querySelectorAll("h4");
     headers.forEach(h => {
-      (h as HTMLElement).style.display = state.orderFlow === "mixing_view" ? "none" : "block";
+      (h as HTMLElement).style.display = "block";
     });
   }
 
-  document.querySelectorAll("#actions-panel .btn").forEach((btn) => {
+  document.querySelectorAll(".btn, .table-btn").forEach((btn) => {
     const action = btn.getAttribute("data-action");
     const actionUnlockMap: Record<string, string> = {
       select_vodka: "vodka",
@@ -204,13 +224,15 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       (btn as HTMLButtonElement).disabled = !isMixing;
     } else if (action && action.startsWith("select_")) {
       (btn as HTMLButtonElement).disabled = !isMixing || state.drink.baseSpirit !== null || !isUnlocked;
-    } else {
+    } else if (action) {
       (btn as HTMLButtonElement).disabled = !isMixing || !isUnlocked;
     }
 
-    const button = btn as HTMLButtonElement;
-    const baseLabel = button.dataset.label || button.textContent || "";
-    button.textContent = isUnlocked ? baseLabel : `${baseLabel} [未解锁]`;
+    if (btn.classList.contains("btn")) {
+      const button = btn as HTMLButtonElement;
+      const baseLabel = button.dataset.label || button.textContent || "";
+      button.textContent = isUnlocked ? baseLabel : `${baseLabel} [未解锁]`;
+    }
   });
 
   // 3. Update Dialogue Panel
@@ -322,37 +344,37 @@ function renderArchive(state: GameState) {
   const archiveHtml = `
     <h2 class="archive-title" style="margin-bottom: 20px; text-align: center;">酒吧档案室 (GUEST ARCHIVES)</h2>
     ${Object.values(GuestsDB).map(guest => {
-      const affinity = state.guestAffinity[guest.id] || 0;
-      const isMet = (state.guestAffinity[guest.id] !== undefined) || state.currentGuestId === guest.id;
-      
-      if (!isMet) {
-        return `
+    const affinity = state.guestAffinity[guest.id] || 0;
+    const isMet = (state.guestAffinity[guest.id] !== undefined) || state.currentGuestId === guest.id;
+
+    if (!isMet) {
+      return `
           <div style="border: 1px solid #333; padding: 15px; margin-bottom: 20px; background: rgba(0,0,0,0.5);">
             <div style="color: #666; font-size: 1.2em; font-style: italic;">[未接触的客人]</div>
           </div>
         `;
-      }
+    }
 
-      const memoryFragments = guest.archives.map(entry => {
-        const isUnlocked = affinity >= entry.threshold;
-        if (isUnlocked) {
-          return `
+    const memoryFragments = guest.archives.map(entry => {
+      const isUnlocked = affinity >= entry.threshold;
+      if (isUnlocked) {
+        return `
             <div class="archive-entry unlocked" style="margin-bottom: 10px; padding: 10px; border-left: 4px solid #73f2ff; background: rgba(115, 242, 255, 0.05);">
               <div class="archive-entry-title" style="color: #73f2ff; font-weight: bold; margin-bottom: 5px;">>> ${entry.title}</div>
               <div class="archive-entry-content" style="color: #ddd;">${entry.content}</div>
             </div>
           `;
-        } else {
-          return `
+      } else {
+        return `
             <div class="archive-entry locked" style="margin-bottom: 10px; padding: 10px; border-left: 4px solid #555; background: rgba(255, 255, 255, 0.05); opacity: 0.6;">
               <div class="archive-entry-title" style="color: #999; font-style: italic;">>> [锁定]</div>
               <div class="archive-entry-content" style="color: #777;">需要好感度达到 ${entry.threshold} 以解锁...</div>
             </div>
           `;
-        }
-      }).join('');
+      }
+    }).join('');
 
-      return `
+    return `
         <div style="border: 1px solid #73f2ff; padding: 15px; margin-bottom: 30px; background: rgba(20,20,30,0.8);">
           <div style="font-size: 1.5em; color: #ff73a8; font-weight: bold;">${guest.name} <span style="font-size: 0.6em; color: #73f2ff; font-weight: normal;">| ${guest.title}</span></div>
           <div style="color: #ccc; margin: 10px 0;">${guest.bio}</div>
@@ -364,7 +386,7 @@ function renderArchive(state: GameState) {
           ${memoryFragments}
         </div>
       `;
-    }).join('')}
+  }).join('')}
   `;
 
   content.innerHTML = archiveHtml;
