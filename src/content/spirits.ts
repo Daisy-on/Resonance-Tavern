@@ -35,6 +35,13 @@ export const SpiritsDB: Record<string, IngredientData> = {
     strength: 70, sweetness: 5, temperature: 20, volume: 30,
     baseWaveShape: "square",
     description: "厚重沉稳，方波。低频存在感强。"
+  },
+  "rum": {
+    id: "rum", name: "朗姆", type: "spirit",
+    unitCost: 11, powerCost: 0,
+    strength: 62, sweetness: 20, temperature: 20, volume: 30,
+    baseWaveShape: "triangle",
+    description: "甜润且有层次，适合中高频与复杂谐波订单。"
   }
 };
 
@@ -42,4 +49,5 @@ export const spirits = [
   { id: "vodka", name: "伏特加" },
   { id: "gin", name: "琴酒" },
   { id: "whisky", name: "威士忌" },
+  { id: "rum", name: "朗姆" },
 ] as const;

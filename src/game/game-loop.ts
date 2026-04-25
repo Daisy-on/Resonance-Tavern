@@ -1,6 +1,6 @@
 import { createDefaultGameState, type GameState } from "./game-state";
-import { applyMixAction } from "../systems/mixology/mixology-system";
-import { calcAdvancedScore } from "../systems/wave/wave-match";
+import { applyMixAction, getIngredientIdByAction } from "../systems/mixology/mixology-system";
+import { calcAdvancedScoreWithBreakdown } from "../systems/wave/wave-match";
 import { generateNextGuest, updateGuestAffinity } from "../systems/npc/npc-system";
 import { renderHud } from "../ui/hud-renderer";
 import { renderBar } from "../ui/bar-renderer";
@@ -15,6 +15,9 @@ import {
 import { pickDailyEvent } from "../systems/event/event-system";
 import { audioSystem } from "../audio/audio-system";
 import { saveGameState } from "../systems/save/save-system";
+import { ensureDayUnlocks, isUnlocked } from "./unlock-system";
+import { createEmptyDrinkState } from "../systems/mixology/drink-state";
+import type { MixActionType } from "../systems/mixology/mix-actions";
 
 type GameLoopInput = {
   canvas: HTMLCanvasElement;
@@ -26,6 +29,25 @@ export function createGameLoop(input: GameLoopInput) {
   if (!ctx) throw new Error("Canvas 2D context is not available");
 
   let currentState = { ...input.state };
+  ensureDayUnlocks(currentState);
+
+  const mixActions = new Set<MixActionType>([
+    "select_vodka",
+    "select_gin",
+    "select_whisky",
+    "select_rum",
+    "add_syrup",
+    "add_lemon",
+    "add_soda",
+    "add_bitters",
+    "add_ice",
+    "stir",
+    "shake",
+    "muddle",
+    "pour_precise",
+    "flame",
+    "reset",
+  ]);
 
   const resize = () => {
     const dpr = window.devicePixelRatio || 1;
@@ -42,6 +64,7 @@ export function createGameLoop(input: GameLoopInput) {
     console.log("Dispatching:", action);
 
     if (action === "next_guest") {
+      ensureDayUnlocks(currentState);
       if (currentState.ordersCompletedToday >= currentState.maxOrdersPerDay) {
         const { isBankrupt } = applyDailySettlement(currentState);
         currentState.orderFlow = isBankrupt ? "game_over" : "resource_settlement";
@@ -51,11 +74,8 @@ export function createGameLoop(input: GameLoopInput) {
         generateNextGuest(currentState);
 
         // Reset drink
-        currentState.drink = {
-          baseSpirit: null, baseWaveShape: null, strength: 0, sweetness: 0,
-          acidity: 0, temperature: 20, sparkle: 0, blend: 0, dilution: 0,
-          oxidation: 0, smoke: 0, aroma: 0, volume: 0, maxVolume: 300, actions: []
-        };
+        currentState.drink = createEmptyDrinkState();
+        currentState.lastScoreBreakdown = null;
 
         currentState.orderFlow = "guest_enter";
       }
@@ -66,6 +86,7 @@ export function createGameLoop(input: GameLoopInput) {
         currentState.orderFlow = "game_over";
       } else {
         currentState.day += 1;
+        ensureDayUnlocks(currentState);
         currentState.ordersCompletedToday = 0;
         currentState.orderFlow = "idle";
         resetDailyLedger(currentState);
@@ -75,32 +96,34 @@ export function createGameLoop(input: GameLoopInput) {
     } else if (action === "submit") {
       // Calculate score
       if (currentState.currentOrder && currentState.drink.baseSpirit) {
-        const rawScore = calcAdvancedScore(currentState.drink, currentState.currentOrder);
+        const scoreResult = calcAdvancedScoreWithBreakdown(currentState.drink, currentState.currentOrder);
+        const rawScore = scoreResult.finalScore;
         // apply penalties
         let finalScore = rawScore;
         if (currentState.drink.volume > 200) finalScore -= 10; // overflow
-        
+
         // Event modifier
         if (currentState.activeEvent === "streamer" && finalScore >= 95) finalScore += 5;
 
         currentState.lastScore = Math.max(0, finalScore);
+        currentState.lastScoreBreakdown = scoreResult.breakdown;
 
         if (finalScore >= 60) {
           audioSystem.playSuccess();
         } else {
           audioSystem.playFail();
         }
-        
+
         // 订单提交后：只计算收入和评分（成本已在动作时实时扣除）
         applyOrderIncome(currentState, currentState.lastScore);
         applyOrderRating(currentState, currentState.lastScore);
-        
+
         // Apply affinity
         updateGuestAffinity(currentState, currentState.lastScore);
 
         currentState.ordersCompletedToday += 1;
         currentState.orderFlow = "result";
-        
+
         // 单后失败判定
         if (checkGameOver(currentState)) {
           currentState.orderFlow = "game_over";
@@ -109,22 +132,37 @@ export function createGameLoop(input: GameLoopInput) {
       }
     } else if (action === "restart") {
       currentState = createDefaultGameState();
+      ensureDayUnlocks(currentState);
       saveGameState(currentState);
-    } else if (["select_vodka", "select_gin", "select_whisky", "add_syrup", "add_lemon", "add_soda", "add_ice", "stir", "reset"].includes(action)) {
+    } else if (mixActions.has(action as MixActionType)) {
+      const mixAction = action as MixActionType;
+      ensureDayUnlocks(currentState);
       audioSystem.init(); // Initialize audio on first interaction
-      if (action === "add_ice") audioSystem.playIce();
-      else if (action !== "stir" && action !== "reset") audioSystem.playPour();
+      if (mixAction === "add_ice") audioSystem.playIce();
+      else if (mixAction !== "stir" && mixAction !== "reset") audioSystem.playPour();
 
-      const actionToIngredient: Record<string, string> = {
+      const actionUnlockMap: Partial<Record<MixActionType, string>> = {
         select_vodka: "vodka",
         select_gin: "gin",
         select_whisky: "whisky",
+        select_rum: "rum",
         add_syrup: "simple_syrup",
         add_lemon: "lemon_juice",
         add_soda: "soda_water",
+        add_bitters: "bitters",
         add_ice: "ice_cube",
+        stir: "stir_tool",
+        shake: "shake_tool",
+        muddle: "muddle_tool",
+        pour_precise: "precision_tool",
+        flame: "flame_tool",
       };
-      const ingredientId = actionToIngredient[action];
+      const requiredUnlock = actionUnlockMap[mixAction];
+      if (requiredUnlock && !isUnlocked(currentState, requiredUnlock)) {
+        return;
+      }
+
+      const ingredientId = getIngredientIdByAction(mixAction);
       if (ingredientId) {
         applyIngredientCost(currentState, ingredientId);
         if (checkGameOver(currentState)) {
@@ -138,7 +176,7 @@ export function createGameLoop(input: GameLoopInput) {
         // First action starts mixing
         currentState.orderFlow = "mixing";
       }
-      currentState.drink = applyMixAction(currentState.drink, { type: action as any });
+      currentState.drink = applyMixAction(currentState.drink, { type: mixAction });
       // Extra power cost per action could go here if desired
     }
   };
@@ -173,31 +211,59 @@ export function createGameLoop(input: GameLoopInput) {
 
     const propY = tableY + 60;
 
+    const canDragAction = (candidate: MixActionType): boolean => {
+      const unlockMap: Partial<Record<MixActionType, string>> = {
+        select_vodka: "vodka",
+        select_gin: "gin",
+        select_whisky: "whisky",
+        select_rum: "rum",
+        add_syrup: "simple_syrup",
+        add_lemon: "lemon_juice",
+        add_soda: "soda_water",
+        add_bitters: "bitters",
+        add_ice: "ice_cube",
+        stir: "stir_tool",
+        shake: "shake_tool",
+        pour_precise: "precision_tool",
+      };
+      const unlockId = unlockMap[candidate];
+      return !unlockId || isUnlocked(currentState, unlockId);
+    };
+
     // 1. Spirits (Left) - Size 80
-    if (isInside(x, y, 60, propY - 40, 320, 140)) {
-      if (x < 160) currentState.draggedItem = "select_vodka";
-      else if (x < 280) currentState.draggedItem = "select_gin";
-      else currentState.draggedItem = "select_whisky";
+    if (isInside(x, y, 60, propY - 40, 460, 140)) {
+      if (x < 160) currentState.draggedItem = canDragAction("select_vodka") ? "select_vodka" : null;
+      else if (x < 280) currentState.draggedItem = canDragAction("select_gin") ? "select_gin" : null;
+      else if (x < 400) currentState.draggedItem = canDragAction("select_whisky") ? "select_whisky" : null;
+      else currentState.draggedItem = canDragAction("select_rum") ? "select_rum" : null;
       return;
     }
 
     // 2. Ice Box (Middle-ish) - Size 100
     if (isInside(x, y, w / 2 - 300, propY + 20, 120, 120)) {
-      currentState.draggedItem = "add_ice";
+      currentState.draggedItem = canDragAction("add_ice") ? "add_ice" : null;
       return;
     }
 
-    // 3. Additives (Right) - Size 60
-    if (isInside(x, y, w - 380, propY - 20, 350, 120)) {
-      if (x < w - 280) currentState.draggedItem = "add_syrup";
-      else if (x < w - 160) currentState.draggedItem = "add_lemon";
-      else currentState.draggedItem = "add_soda";
+    // 3. Additives (Right) - Row 1
+    if (isInside(x, y, w - 520, propY - 40, 420, 100)) {
+      if (x < w - 400) currentState.draggedItem = canDragAction("add_syrup") ? "add_syrup" : null;
+      else if (x < w - 300) currentState.draggedItem = canDragAction("add_lemon") ? "add_lemon" : null;
+      else if (x < w - 180) currentState.draggedItem = canDragAction("add_soda") ? "add_soda" : null;
+      else currentState.draggedItem = canDragAction("add_bitters") ? "add_bitters" : null;
       return;
     }
 
     // 4. Stir Tool
-    if (isInside(x, y, w / 2 + 180, propY + 60, 140, 60)) {
-      currentState.draggedItem = "stir";
+    if (isInside(x, y, w / 2 + 100, propY + 40, 140, 80)) {
+      currentState.draggedItem = canDragAction("stir") ? "stir" : null;
+      return;
+    }
+
+    // 5. Advanced tools (Row 2)
+    if (isInside(x, y, w - 380, propY + 80, 200, 100)) {
+      if (x < w - 290) currentState.draggedItem = canDragAction("shake") ? "shake" : null;
+      else currentState.draggedItem = canDragAction("pour_precise") ? "pour_precise" : null;
       return;
     }
   };
@@ -208,7 +274,7 @@ export function createGameLoop(input: GameLoopInput) {
     currentState.mouse.y = e.clientY - rect.top;
   };
 
-  const handleMouseUp = (e: MouseEvent) => {
+  const handleMouseUp = () => {
     if (currentState.orderFlow !== "mixing_view") {
       currentState.mouse.isDown = false;
       currentState.draggedItem = null;
@@ -221,7 +287,6 @@ export function createGameLoop(input: GameLoopInput) {
       const tableY = h - 300;
       const cupX = w / 2;
       const cupY = tableY + 180; // Corrected cup bottom Y from bar-renderer
-      const cupWidth = 80;
       const cupHeight = 120;
       const cupTop = cupY - cupHeight;
 
@@ -232,7 +297,7 @@ export function createGameLoop(input: GameLoopInput) {
         currentState.mouse.y < cupY + 40;
 
       if (isOverCup) {
-        dispatch(currentState.draggedItem);
+        dispatch(currentState.draggedItem as string);
       }
     }
 

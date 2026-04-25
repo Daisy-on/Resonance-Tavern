@@ -19,6 +19,12 @@ export const AdditivesDB: Record<string, IngredientData> = {
     strength: -5, sweetness: 0, temperature: 0, sparkle: +40, volume: 30,
     description: "降低烈度，增加大量波形毛刺（高频噪声）。"
   },
+  "bitters": {
+    id: "bitters", name: "苦精", type: "mixer",
+    unitCost: 4, powerCost: 0,
+    strength: 2, sweetness: -3, acidity: +12, temperature: 0, sparkle: -8, volume: 5,
+    description: "用于微调频率与相位容差，适配后期精细订单。"
+  },
   "ice_cube": {
     id: "ice_cube", name: "标准冰块", type: "ice",
     unitCost: 1, powerCost: 1,

@@ -17,18 +17,26 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <h3 style="margin:0 0 10px 0;">共振酒吧 (Cyber Resonance)</h3>
         <div id="status-text"></div>
       </div>
+      <div id="locked-panel" class="panel">
+        <h4 style="margin:0 0 10px 0; color:#ff73a8;">待解锁物品</h4>
+        <div id="locked-list" style="font-size:0.9em; color:#aaa; line-height:1.6;"></div>
+      </div>
       <div id="actions-panel" class="panel">
         <h4 style="margin:0 0 10px 0; color:#ff73a8; font-family:'Courier New', Courier, monospace;">基酒 SPIRITS</h4>
         <button class="btn" id="btn-vodka" data-action="select_vodka">伏特加</button>
         <button class="btn" id="btn-gin" data-action="select_gin">琴酒</button>
         <button class="btn" id="btn-whisky" data-action="select_whisky">威士忌</button>
+        <button class="btn" id="btn-rum" data-action="select_rum">朗姆</button>
         
         <h4 style="margin:10px 0; color:#ff73a8; font-family:'Courier New', Courier, monospace;">添加剂 ADDITIVES</h4>
         <button class="btn" data-action="add_syrup">糖浆 (频率+)</button>
         <button class="btn" data-action="add_lemon">柠檬 (酸度+)</button>
         <button class="btn" data-action="add_ice">冰块 (温度-)</button>
         <button class="btn" data-action="add_soda">苏打 (气泡+)</button>
-        <button class="btn" data-action="stir">搅拌</button>
+        <button class="btn" data-action="add_bitters">苦精 (微调)</button>
+        <button class="btn" data-action="stir">搅拌 (相位+)</button>
+        <button class="btn" data-action="shake">摇壶</button>
+        <button class="btn" data-action="pour_precise">精准注入</button>
         
         <hr style="border-color:#73f2ff; margin: 10px 0; opacity: 0.3;">
         <button class="btn" data-action="reset">重做</button>
@@ -67,6 +75,11 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       }
     });
 
+    document.querySelectorAll("#actions-panel .btn[data-action]").forEach((btn) => {
+      const button = btn as HTMLButtonElement;
+      button.dataset.label = button.textContent || "";
+    });
+
     isInitialized = true;
   }
 
@@ -83,8 +96,31 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       今日净收益: $${(state.dailyLedger.orderIncomeToday - state.dailyLedger.ingredientCostToday - state.dailyLedger.rentToday).toFixed(1)}<br/>
       今日冰耗电: ${state.dailyLedger.powerFromIceToday.toFixed(1)}<br/>
       <hr style="border-color:#73f2ff; margin: 8px 0; opacity: 0.2;">
-      容量: ${state.drink.volume}ml | 温度: ${state.drink.temperature}°C
+      容量: ${state.drink.volume}ml | 温度: ${state.drink.temperature}°C<br/>
+      相位偏移: ${state.drink.phaseOffset.toFixed(2)} rad
     `;
+  }
+
+  // 1.5 Update Locked Panel
+  const lockedList = document.getElementById("locked-list");
+  if (lockedList) {
+    const allUnlockables = [
+      { id: "rum", name: "朗姆酒 (Day 4)", day: 4 },
+      { id: "bitters", name: "苦精 (Day 7)", day: 7 },
+      { id: "shake_tool", name: "摇壶 (Day 7)", day: 7 },
+      { id: "muddle_tool", name: "压碎棒 (Day 10)", day: 10 },
+      { id: "flame_tool", name: "喷枪 (Day 10)", day: 10 },
+      { id: "precision_tool", name: "精准注入器 (Day 10)", day: 10 },
+    ];
+
+    const lockedItems = allUnlockables.filter(item => !state.inventory.includes(item.id));
+    if (lockedItems.length > 0) {
+      lockedList.innerHTML = lockedItems
+        .map(item => `<div>• ${item.name}</div>`)
+        .join("");
+    } else {
+      lockedList.innerHTML = "<div style='color:#73f2ff;'>全部物品已解锁</div>";
+    }
   }
 
   // 2. Update Actions Panel (Mixing buttons)
@@ -96,7 +132,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     spiritGroup.forEach(btn => {
       (btn as HTMLElement).style.display = state.orderFlow === "mixing_view" ? "none" : "inline-block";
     });
-    
+
     // Also hide the headers if in mixing_view
     const headers = actionsPanel.querySelectorAll("h4");
     headers.forEach(h => {
@@ -106,15 +142,37 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
 
   document.querySelectorAll("#actions-panel .btn").forEach((btn) => {
     const action = btn.getAttribute("data-action");
+    const actionUnlockMap: Record<string, string> = {
+      select_vodka: "vodka",
+      select_gin: "gin",
+      select_whisky: "whisky",
+      select_rum: "rum",
+      add_syrup: "simple_syrup",
+      add_lemon: "lemon_juice",
+      add_ice: "ice_cube",
+      add_soda: "soda_water",
+      add_bitters: "bitters",
+      stir: "stir_tool",
+      shake: "shake_tool",
+      pour_precise: "precision_tool",
+      flame: "flame_tool",
+    };
+    const requiredUnlock = action ? actionUnlockMap[action] : null;
+    const isUnlocked = !requiredUnlock || state.inventory.includes(requiredUnlock);
+
     if (action === "submit") {
       (btn as HTMLButtonElement).disabled = !isMixing || state.drink.volume === 0;
     } else if (action === "reset") {
       (btn as HTMLButtonElement).disabled = !isMixing;
     } else if (action && action.startsWith("select_")) {
-      (btn as HTMLButtonElement).disabled = !isMixing || state.drink.baseSpirit !== null;
+      (btn as HTMLButtonElement).disabled = !isMixing || state.drink.baseSpirit !== null || !isUnlocked;
     } else {
-      (btn as HTMLButtonElement).disabled = !isMixing;
+      (btn as HTMLButtonElement).disabled = !isMixing || !isUnlocked;
     }
+
+    const button = btn as HTMLButtonElement;
+    const baseLabel = button.dataset.label || button.textContent || "";
+    button.textContent = isUnlocked ? baseLabel : `${baseLabel} [未解锁]`;
   });
 
   // 3. Update Dialogue Panel
@@ -122,15 +180,15 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
   if (diagPanel) {
     const showDiag = state.orderFlow === "guest_enter" || state.orderFlow === "dialogue" || state.orderFlow === "mixing";
     diagPanel.style.display = showDiag ? "block" : "none";
-    
+
     if (showDiag) {
       const nameEl = document.getElementById("guest-name");
       const textEl = document.getElementById("guest-dialogue");
       const nextBtn = document.getElementById("btn-next");
-      
+
       const guest = state.currentGuestId ? GuestsDB[state.currentGuestId] : null;
       if (nameEl) nameEl.textContent = guest ? `${guest.name} (${guest.title})` : "???";
-      
+
       if (textEl) {
         if (state.orderFlow === "guest_enter") {
           textEl.textContent = guest ? guest.dialogues.enter[0] : "...";
@@ -138,7 +196,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
           textEl.textContent = state.currentOrder ? state.currentOrder.moodText : "What can I get you?";
         }
       }
-      
+
       if (nextBtn) {
         nextBtn.style.display = (state.orderFlow === "guest_enter") ? "inline-block" : "none";
       }
@@ -164,8 +222,12 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         if (nextBtn) nextBtn.textContent = "开始第 " + state.day + " 天";
       } else if (state.orderFlow === "result") {
         if (titleEl) titleEl.textContent = "上酒完成";
-        if (scoreEl) scoreEl.innerHTML = `匹配度: <strong style="color:#ff73a8; font-size:1.5em;">${state.lastScore.toFixed(0)}%</strong>`;
-        
+        if (scoreEl) {
+          const breakdown = state.lastScoreBreakdown;
+          scoreEl.innerHTML = `匹配度: <strong style="color:#ff73a8; font-size:1.5em;">${state.lastScore.toFixed(0)}%</strong><br/>
+            ${breakdown ? `形状 ${breakdown.shape} / 振幅 ${breakdown.amplitude} / 频率 ${breakdown.frequency} / 相位 ${breakdown.phase} / 纹理 ${breakdown.texture}` : ""}`;
+        }
+
         let feedback = "";
         if (state.lastScore >= 95) feedback = "完美共振！";
         else if (state.lastScore >= 80) feedback = "客人很满意。";

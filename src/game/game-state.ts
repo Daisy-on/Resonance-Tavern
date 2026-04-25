@@ -8,6 +8,14 @@ export type ResourceState = {
   rating: number;
 };
 
+export type ScoreBreakdown = {
+  shape: number;
+  amplitude: number;
+  frequency: number;
+  phase: number;
+  texture: number;
+};
+
 export type DailyLedger = {
   ingredientCostToday: number;
   orderIncomeToday: number;
@@ -57,6 +65,7 @@ export type GameState = {
   activeEvent: string | null;
   guestAffinity: Record<string, number>;
   inventory: string[];
+  lastScoreBreakdown: ScoreBreakdown | null;
 };
 
 export function createDefaultGameState(): GameState {
@@ -96,6 +105,16 @@ export function createDefaultGameState(): GameState {
     draggedItem: null,
     activeEvent: null,
     guestAffinity: {},
-    inventory: [],
+    inventory: [
+      "vodka",
+      "gin",
+      "whisky",
+      "simple_syrup",
+      "lemon_juice",
+      "soda_water",
+      "ice_cube",
+      "stir_tool",
+    ],
+    lastScoreBreakdown: null,
   };
 }

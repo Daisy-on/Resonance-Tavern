@@ -18,6 +18,7 @@ export type DrinkState = {
   oxidation: number;
   smoke: number;
   aroma: number;
+  phaseOffset: number; // radians
   
   // Physical
   volume: number; // in ml
@@ -41,6 +42,7 @@ export function createEmptyDrinkState(): DrinkState {
     oxidation: 0,
     smoke: 0,
     aroma: 0,
+    phaseOffset: 0,
     volume: 0,
     maxVolume: 300,
     actions: [],

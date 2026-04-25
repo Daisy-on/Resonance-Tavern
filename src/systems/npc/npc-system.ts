@@ -24,26 +24,39 @@ export function generateNextGuest(state: GameState) {
   // Update state
   state.currentGuestId = guestId;
   
-  // Pick order, ideally filtered by guest preference later
-  const guestOrders = OrdersDB.filter(o => o.guestId === guestId);
-  const baseOrder = guestOrders.length > 0 
-    ? guestOrders[Math.floor(Math.random() * guestOrders.length)]
-    : OrdersDB[Math.floor(Math.random() * OrdersDB.length)]; // Fallback
+  const minDifficulty = state.day >= 8 ? 2 : 1;
+  const maxDifficulty = state.day >= 8 ? 5 : state.day >= 4 ? 4 : 2;
+
+  // Prefer guest-themed orders first, then fallback to global pool
+  const guestOrders = OrdersDB.filter(
+    (o) =>
+      o.guestId === guestId &&
+      o.difficulty >= minDifficulty &&
+      o.difficulty <= maxDifficulty,
+  );
+  const pool =
+    guestOrders.length > 0
+      ? guestOrders
+      : OrdersDB.filter((o) => o.difficulty >= minDifficulty && o.difficulty <= maxDifficulty);
+  const baseOrder = pool[Math.floor(Math.random() * pool.length)];
     
   // Add some dynamic fluctuation based on day
-  const fluctuation = Math.min(0.2, state.day * 0.02); // Up to 20% fluctuation
-  const applyFluctuation = (val: number) => {
+  const fluctuation = Math.min(0.18, state.day * 0.018);
+  const applyFluctuation = (val: number, min = 0, max = Number.POSITIVE_INFINITY) => {
     const sign = Math.random() > 0.5 ? 1 : -1;
-    return Math.max(0, val + (val * fluctuation * sign));
+    return Math.min(max, Math.max(min, val + (val * fluctuation * sign)));
   };
   
   const dynamicOrder: OrderTemplate = {
     ...baseOrder,
     targetParams: {
       ...baseOrder.targetParams,
-      amplitude: applyFluctuation(baseOrder.targetParams.amplitude),
-      frequency: applyFluctuation(baseOrder.targetParams.frequency),
-      decay: applyFluctuation(baseOrder.targetParams.decay),
+      amplitude: applyFluctuation(baseOrder.targetParams.amplitude, 0.2, 1.5),
+      frequency: applyFluctuation(baseOrder.targetParams.frequency, 0.5, 3),
+      decay: applyFluctuation(baseOrder.targetParams.decay, 0, 1),
+      phase: applyFluctuation(baseOrder.targetParams.phase, -Math.PI * 2, Math.PI * 2),
+      harmonics: applyFluctuation(baseOrder.targetParams.harmonics, 0, 1),
+      noise: applyFluctuation(baseOrder.targetParams.noise, 0, 1),
     }
   };
 
