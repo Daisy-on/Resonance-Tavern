@@ -1,11 +1,11 @@
 import type { GameState } from "../game/game-state";
 import { generateWave, drinkStateToWaveParams } from "../systems/wave/wave-generator";
-import { NPC_SPRITES, COLOR_MAP } from "./pixel-assets";
+import { NPC_SPRITES, COLOR_MAP, PROP_SPRITES } from "./pixel-assets";
 
 export function renderBar(ctx: CanvasRenderingContext2D, width: number, height: number, state: GameState) {
   // Clear screen
   ctx.clearRect(0, 0, width, height);
-  
+
   if (state.orderFlow === "mixing_view") {
     drawMixingFocusView(ctx, width, height, state);
     return;
@@ -32,12 +32,12 @@ export function renderBar(ctx: CanvasRenderingContext2D, width: number, height: 
     // 5. Draw Cup (Only if base spirit is selected, and FLOAT above table)
     if (state.drink.baseSpirit !== null) {
       const cupX = width * 0.7;
-      const floatingOffset = 25 + Math.sin(Date.now() / 400) * 8; 
-      const cupY = height - 130 - floatingOffset; 
+      const floatingOffset = 25 + Math.sin(Date.now() / 400) * 8;
+      const cupY = height - 130 - floatingOffset;
       const cupWidth = 80;
       const cupHeight = 120;
       drawPixelCup(ctx, cupX, cupY, cupWidth, cupHeight, state.drink);
-      
+
       // Shadow for floating cup
       ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
       ctx.beginPath();
@@ -80,43 +80,49 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   }
 
   // Large Table
-  const tableY = h - 250;
+  const tableY = h - 300; // Moved table up slightly to fit bigger props inside
+  const tableHeight = 300;
   ctx.fillStyle = "#1a0a1a";
-  ctx.fillRect(0, tableY, w, 250);
+  ctx.fillRect(0, tableY, w, tableHeight);
   ctx.strokeStyle = "#ff2d7d";
   ctx.lineWidth = 4;
   ctx.strokeRect(-10, tableY, w + 20, 10);
 
-  // Left: Spirits
-  drawSpiritsSet(ctx, 50, tableY - 120);
+  // Layout positions - Props are now placed INSIDE the table (y > tableY)
+  const propY = tableY + 60;
+
+  // Left: Spirits (Made LARGER: scale 50 -> 80)
+  drawSpiritsSet(ctx, 60, propY - 40);
 
   // Middle: Ice Box
-  drawIceBox(ctx, w / 2 - 250, tableY - 60);
+  drawIceBox(ctx, w / 2 - 300, propY + 20);
 
-  // Middle: Cup
+  // Middle: Cup (Smaller and floating inside table area)
   const cupX = w / 2;
-  const cupY = tableY - 40;
+  const cupY = tableY + 180;
   drawPixelCup(ctx, cupX, cupY, 80, 120, state.drink);
 
   // Right: Additives
-  drawAdditivesSet(ctx, w - 350, tableY - 100);
-  
-  // Right: Stir Tool
-  drawStirTool(ctx, w / 2 + 150, tableY - 30);
+  drawAdditivesSet(ctx, w - 380, propY - 20);
 
-  // Top: Oscilloscope (Essential for feedback)
-  const waveAreaWidth = w * 0.4;
+  // Right: Stir Tool
+  drawStirTool(ctx, w / 2 + 180, propY + 60);
+
+  // Top: Oscilloscope (Moved to center of viewport)
+  const waveAreaWidth = w * 0.75; // Slightly wider
   const waveAreaX = (w - waveAreaWidth) / 2;
-  const waveAreaY = 100;
-  drawOscilloscope(ctx, waveAreaX, waveAreaY, waveAreaWidth, 100);
+  const waveAreaHeight = 240; // Slightly taller
+  const waveAreaY = (h - waveAreaHeight) / 2 - 50; // Centered in viewport, slightly offset up for table
+  
+  drawOscilloscope(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight);
   if (state.currentOrder) {
     const targetWave = generateWave(state.currentOrder.targetParams);
-    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, 100, targetWave, "rgba(255, 115, 168, 0.4)", 2, true);
+    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 115, 168, 0.4)", 2, true);
   }
   if (state.drink.baseSpirit) {
     const currentParams = drinkStateToWaveParams(state.drink);
     const currentWave = generateWave(currentParams);
-    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, 100, currentWave, "rgba(115, 242, 255, 0.9)", 2, false);
+    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, currentWave, "rgba(115, 242, 255, 0.9)", 2, false);
   }
 
   // Dragging Feedback
@@ -128,62 +134,69 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   }
 }
 
-function drawSpiritsSet(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  // Vodka
-  ctx.fillStyle = "#c8f0ff";
-  ctx.fillRect(x, y, 40, 100);
-  ctx.fillStyle = "#fff";
-  ctx.fillText("VODKA", x, y - 10);
-  
-  // Gin
-  ctx.fillStyle = "#b4ffb4";
-  ctx.fillRect(x + 100, y, 40, 100);
-  ctx.fillStyle = "#fff";
-  ctx.fillText("GIN", x + 100, y - 10);
+function drawPixelSprite(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, spriteData: string[]) {
+  const numRows = spriteData.length;
+  const numCols = spriteData[0].length;
+  const pixelSize = width / numCols;
 
-  // Whisky
-  ctx.fillStyle = "#c89632";
-  ctx.fillRect(x + 200, y, 40, 100);
+  ctx.save();
+  ctx.translate(x, y);
+
+  for (let r = 0; r < numRows; r++) {
+    for (let c = 0; c < numCols; c++) {
+      const char = spriteData[r][c];
+      const color = COLOR_MAP[char];
+      if (color && color !== "transparent") {
+        ctx.fillStyle = color;
+        // overlap slightly to avoid bleeding lines
+        ctx.fillRect(c * pixelSize, r * pixelSize, pixelSize + 0.5, pixelSize + 0.5);
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function drawSpiritsSet(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  // Vodka - Increased size to 80
+  drawPixelSprite(ctx, x, y, 80, PROP_SPRITES["vodka_bottle"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("WHISKY", x + 200, y - 10);
+  ctx.font = "bold 14px Arial";
+  ctx.fillText("伏特加", x + 15, y - 10);
+
+  // Gin - Increased size to 80
+  drawPixelSprite(ctx, x + 120, y, 80, PROP_SPRITES["gin_bottle"]);
+  ctx.fillStyle = "#fff";
+  ctx.fillText("金酒", x + 145, y - 10);
+
+  // Whisky - Increased size to 80
+  drawPixelSprite(ctx, x + 240, y, 80, PROP_SPRITES["whisky_bottle"]);
+  ctx.fillStyle = "#fff";
+  ctx.fillText("威士忌", x + 250, y - 10);
 }
 
 function drawIceBox(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  ctx.fillStyle = "#444466";
-  ctx.fillRect(x, y, 100, 60);
-  ctx.strokeStyle = "#73f2ff";
-  ctx.strokeRect(x, y, 100, 60);
-  
-  // Little ice cubes inside
-  ctx.fillStyle = "rgba(200, 240, 255, 0.6)";
-  ctx.fillRect(x + 10, y + 10, 20, 20);
-  ctx.fillRect(x + 40, y + 15, 20, 20);
-  ctx.fillRect(x + 70, y + 10, 20, 20);
-  
+  drawPixelSprite(ctx, x, y, 100, PROP_SPRITES["ice_bowl"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("ICE", x + 35, y + 80);
+  ctx.font = "bold 14px Arial";
+  ctx.fillText("冰块", x + 35, y + 120);
 }
 
 function drawAdditivesSet(ctx: CanvasRenderingContext2D, x: number, y: number) {
   // Syrup
-  ctx.fillStyle = "#ff73a8";
-  ctx.fillRect(x, y, 30, 80);
+  drawPixelSprite(ctx, x, y, 60, PROP_SPRITES["syrup_bottle"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("SYRUP", x - 5, y - 10);
+  ctx.font = "bold 14px Arial";
+  ctx.fillText("糖浆", x + 5, y - 10);
 
   // Lemon
-  ctx.fillStyle = "#ffff4d";
-  ctx.beginPath();
-  ctx.arc(x + 100, y + 40, 20, 0, Math.PI * 2);
-  ctx.fill();
+  drawPixelSprite(ctx, x + 120, y + 40, 60, PROP_SPRITES["lemon_slice"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("LEMON", x + 80, y - 10);
+  ctx.fillText("柠檬", x + 120, y - 10);
 
   // Soda
-  ctx.fillStyle = "#73f2ff";
-  ctx.fillRect(x + 200, y, 35, 80);
+  drawPixelSprite(ctx, x + 240, y, 60, PROP_SPRITES["soda_can"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("SODA", x + 200, y - 10);
+  ctx.fillText("苏打水", x + 250, y - 10);
 }
 
 function drawStirTool(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -194,75 +207,44 @@ function drawStirTool(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.lineTo(x + 100, y);
   ctx.stroke();
   ctx.fillStyle = "#fff";
-  ctx.fillText("STIR", x + 35, y + 20);
+  ctx.fillText("搅拌", x + 35, y + 20);
 }
 
 function drawDraggedPreview(ctx: CanvasRenderingContext2D, x: number, y: number, item: string) {
   ctx.save();
-  
+
   // Center the item on mouse and add a slight "grabbed" tilt
   ctx.translate(x, y);
   ctx.rotate(0.05); // Subtle tilt
-  
+
   if (item === "select_vodka") {
-    ctx.translate(-20, -50);
-    ctx.fillStyle = "#c8f0ff";
-    ctx.fillRect(0, 0, 40, 100);
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.strokeRect(0, 0, 40, 100);
+    drawPixelSprite(ctx, -25, -50, 50, PROP_SPRITES["vodka_bottle"]);
     ctx.fillStyle = "#fff";
-    ctx.font = "10px Arial";
-    ctx.fillText("VODKA", 2, 50);
+    ctx.fillText("伏特加", 0, 40);
   } else if (item === "select_gin") {
-    ctx.translate(-20, -50);
-    ctx.fillStyle = "#b4ffb4";
-    ctx.fillRect(0, 0, 40, 100);
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.strokeRect(0, 0, 40, 100);
+    drawPixelSprite(ctx, -25, -50, 50, PROP_SPRITES["gin_bottle"]);
     ctx.fillStyle = "#fff";
-    ctx.font = "10px Arial";
-    ctx.fillText("GIN", 8, 50);
+    ctx.fillText("金酒", 0, 40);
   } else if (item === "select_whisky") {
-    ctx.translate(-20, -50);
-    ctx.fillStyle = "#c89632";
-    ctx.fillRect(0, 0, 40, 100);
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.strokeRect(0, 0, 40, 100);
+    drawPixelSprite(ctx, -25, -50, 50, PROP_SPRITES["whisky_bottle"]);
     ctx.fillStyle = "#fff";
-    ctx.font = "10px Arial";
-    ctx.fillText("WHISKY", 0, 50);
+    ctx.fillText("威士忌", 0, 40);
   } else if (item === "add_ice") {
-    ctx.translate(-15, -15);
-    ctx.fillStyle = "rgba(200, 240, 255, 0.9)";
-    ctx.fillRect(0, 0, 30, 30);
-    ctx.strokeStyle = "#fff";
-    ctx.strokeRect(0, 0, 30, 30);
+    drawPixelSprite(ctx, -15, -15, 30, PROP_SPRITES["ice_cube"]);
+    ctx.fillStyle = "#fff";
+    ctx.fillText("冰块", 0, 25);
   } else if (item === "add_syrup") {
-    ctx.translate(-15, -40);
-    ctx.fillStyle = "#ff73a8";
-    ctx.fillRect(0, 0, 30, 80);
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.strokeRect(0, 0, 30, 80);
+    drawPixelSprite(ctx, -20, -40, 40, PROP_SPRITES["syrup_bottle"]);
     ctx.fillStyle = "#fff";
-    ctx.font = "10px Arial";
-    ctx.fillText("SYRUP", 0, 40);
+    ctx.fillText("糖浆", 0, 35);
   } else if (item === "add_lemon") {
-    ctx.fillStyle = "#ffff4d";
-    ctx.beginPath();
-    ctx.arc(0, 0, 25, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  } else if (item === "add_soda") {
-    ctx.translate(-17, -40);
-    ctx.fillStyle = "#73f2ff";
-    ctx.fillRect(0, 0, 35, 80);
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.strokeRect(0, 0, 35, 80);
+    drawPixelSprite(ctx, -20, -20, 40, PROP_SPRITES["lemon_slice"]);
     ctx.fillStyle = "#fff";
-    ctx.font = "10px Arial";
-    ctx.fillText("SODA", 4, 40);
+    ctx.fillText("柠檬", 0, 30);
+  } else if (item === "add_soda") {
+    drawPixelSprite(ctx, -20, -40, 40, PROP_SPRITES["soda_can"]);
+    ctx.fillStyle = "#fff";
+    ctx.fillText("苏打水", 0, 35);
   } else if (item === "stir") {
     ctx.strokeStyle = "#aaa";
     ctx.lineWidth = 8;
@@ -271,7 +253,7 @@ function drawDraggedPreview(ctx: CanvasRenderingContext2D, x: number, y: number,
     ctx.lineTo(60, 0);
     ctx.stroke();
     ctx.fillStyle = "#fff";
-    ctx.fillText("STIR", -10, 20);
+    ctx.fillText("搅拌", -10, 20);
   }
 
   ctx.restore();
@@ -303,7 +285,7 @@ function drawCyberpunkBackground(ctx: CanvasRenderingContext2D, w: number, h: nu
     const bH = 60 + pseudoRandom() * 140;
     ctx.fillStyle = "#151525";
     ctx.fillRect(x, winY + winH - bH, bldgWidth, bH);
-    
+
     // Building windows
     for (let wy = winY + winH - bH + 8; wy < winY + winH - 8; wy += 15) {
       if (pseudoRandom() > 0.6) {
@@ -353,13 +335,13 @@ function drawCyberpunkBackground(ctx: CanvasRenderingContext2D, w: number, h: nu
 function drawLShapeTable(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const tableTopY = h - 130;
   const lWidth = w * 0.4; // Width of the L-corner part
-  
+
   ctx.save();
-  
+
   // Horizontal part (Main counter)
   ctx.fillStyle = "#2a1a2e";
   ctx.fillRect(0, tableTopY, w, 130);
-  
+
   // L-Corner Perspective Part (The "L" shape wrapping the NPC)
   ctx.fillStyle = "#3a2a3e";
   ctx.beginPath();
@@ -375,7 +357,7 @@ function drawLShapeTable(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.lineWidth = 4;
   ctx.shadowBlur = 15;
   ctx.shadowColor = "#ff2d7d";
-  
+
   // Main horizontal edge
   ctx.beginPath();
   ctx.moveTo(0, tableTopY);
@@ -408,23 +390,23 @@ function drawHighResBarShelf(ctx: CanvasRenderingContext2D, w: number, h: number
     const y = shelfY + 80 + i * 110;
     // Shelf wood
     ctx.fillRect(shelfX - 20, y, shelfW + 40, 15);
-    
+
     // Detailed bottles
     for (let bx = shelfX + 30; bx < shelfX + shelfW - 30; bx += 25) {
       const seed = (i * 100) + bx;
       if (Math.sin(seed) > -0.2) {
         const bH = 40 + Math.abs(Math.cos(seed)) * 30;
         const bW = 12 + Math.abs(Math.sin(seed * 2)) * 8;
-        
+
         // Bottle body
         const hue = Math.abs(Math.sin(seed * 3)) * 360;
         ctx.fillStyle = `hsla(${hue}, 60%, 40%, 0.9)`;
         ctx.fillRect(bx, y - bH, bW, bH);
-        
+
         // Label
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
         ctx.fillRect(bx + 2, y - bH + 10, bW - 4, 15);
-        
+
         // Neck
         ctx.fillStyle = `hsla(${hue}, 60%, 20%, 0.9)`;
         ctx.fillRect(bx + bW / 4, y - bH - 10, bW / 2, 10);
@@ -445,7 +427,7 @@ function drawNPC(ctx: CanvasRenderingContext2D, x: number, y: number, size: numb
   const rows = sprite.length;
   const cols = sprite[0].length;
   const pixelSize = size / cols;
-  
+
   ctx.save();
   // 更细腻的呼吸动画
   const hover = Math.sin(Date.now() / 1200) * 5;
@@ -463,7 +445,7 @@ function drawNPC(ctx: CanvasRenderingContext2D, x: number, y: number, size: numb
         ctx.fillStyle = color;
         // 渲染像素点，略微重叠以消除缝隙
         ctx.fillRect(col * pixelSize, row * pixelSize, pixelSize + 0.5, pixelSize + 0.5);
-        
+
         // 眼睛/发光部位增强
         if (["W", "Y", "C", "p"].includes(colorChar)) {
           ctx.globalAlpha = 0.3;
@@ -476,7 +458,7 @@ function drawNPC(ctx: CanvasRenderingContext2D, x: number, y: number, size: numb
       }
     }
   }
-  
+
   // 底部阴影
   ctx.shadowBlur = 0;
   ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
@@ -491,7 +473,7 @@ function drawTable(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const tableTopY = h - 120;
   ctx.fillStyle = "#1a1a2e";
   ctx.fillRect(0, tableTopY, w, 120);
-  
+
   // Table edge neon
   ctx.strokeStyle = "#73f2ff";
   ctx.lineWidth = 4;
@@ -504,56 +486,69 @@ function drawTable(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.shadowBlur = 0;
 }
 
-function drawPixelCup(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, drink: any) {
-  // 绘制杯子背部
-  ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
-  ctx.fillRect(x - w / 2, y - h, w, h);
+export function drawPixelCup(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, drink: any) {
+  const topWidth = width;
+  const bottomWidth = width * 0.7; // Tapered bottom
+  const halfTop = topWidth / 2;
+  const halfBottom = bottomWidth / 2;
 
-  // 绘制液体
-  const fillPercent = Math.min(1, drink.volume / 200);
-  if (fillPercent > 0) {
-    const liqHeight = fillPercent * (h - 20);
-    const liqY = y - liqHeight - 10;
-    
-    // 渐变液体
-    const grad = ctx.createLinearGradient(x, liqY, x, y - 10);
-    const baseColor = getLiquidColor(drink.baseSpirit);
-    grad.addColorStop(0, baseColor);
-    grad.addColorStop(1, shadeColor(baseColor, -30));
-    
-    ctx.fillStyle = grad;
-    ctx.fillRect(x - w / 2 + 10, liqY, w - 20, liqHeight);
+  ctx.save();
+  ctx.translate(x, y);
 
-    // 绘制冰块 (Pixel style)
-    if (drink.temperature < 15) {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-      ctx.fillRect(x - 15, y - 40, 20, 20);
-      ctx.fillRect(x + 5, y - 70, 15, 15);
-    }
+  // 1. Draw Liquid (Inside Trapezoid)
+  if (drink.volume > 0) {
+    const liquidHeight = (drink.volume / 100) * (height - 10);
+    const liquidTopY = -liquidHeight;
 
-    // 绘制气泡
-    if (drink.sparkle > 20) {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-      for (let i = 0; i < 5; i++) {
-        const bx = x - w/2 + 15 + Math.random() * (w - 30);
-        const by = y - 20 - Math.random() * (liqHeight - 10);
-        ctx.fillRect(bx, by, 3, 3);
-      }
-    }
+    // Calculate liquid top width based on taper
+    const liquidTopWidth = bottomWidth + (topWidth - bottomWidth) * (drink.volume / 100);
+    const halfLiquidTop = liquidTopWidth / 2;
+
+    ctx.fillStyle = drink.color || "rgba(255, 255, 255, 0.2)";
+    ctx.beginPath();
+    ctx.moveTo(-halfBottom, 0);
+    ctx.lineTo(halfBottom, 0);
+    ctx.lineTo(halfLiquidTop, liquidTopY);
+    ctx.lineTo(-halfLiquidTop, liquidTopY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Liquid surface shine
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-halfLiquidTop, liquidTopY);
+    ctx.lineTo(halfLiquidTop, liquidTopY);
+    ctx.stroke();
   }
 
-  // 绘制杯子外框（带厚度的像素风）
-  ctx.strokeStyle = "rgba(200, 240, 255, 0.9)";
-  ctx.lineWidth = 10;
-  ctx.strokeRect(x - w / 2, y - h, w, h);
-  
-  // 杯口高光
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 2;
+  // 2. Draw Cup Outline (Trapezoid)
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(x - w / 2, y - h);
-  ctx.lineTo(x + w / 2, y - h);
+  ctx.moveTo(-halfTop, -height);
+  ctx.lineTo(-halfBottom, 0);
+  ctx.lineTo(halfBottom, 0);
+  ctx.lineTo(halfTop, -height);
+  // Do not close path to leave top open
   ctx.stroke();
+
+  // Cup bottom thickness
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(-halfBottom, 0);
+  ctx.lineTo(halfBottom, 0);
+  ctx.stroke();
+
+  // Glass reflections
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-halfTop + 10, -height + 10);
+  ctx.lineTo(-halfBottom + 5, -5);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 // 辅助函数：调整颜色亮度
@@ -600,18 +595,18 @@ function drawWave(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
   if (isDashed) ctx.setLineDash([8, 8]);
-  
+
   ctx.shadowColor = color;
   ctx.shadowBlur = 15;
   ctx.beginPath();
-  
+
   for (let i = 0; i < data.length; i++) {
     const px = x + (i / (data.length - 1)) * w;
     const py = y + (data[i] * h / 2.2) * -1;
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
-  
+
   ctx.stroke();
   ctx.restore();
 }

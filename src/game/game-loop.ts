@@ -31,7 +31,7 @@ export function createGameLoop(input: GameLoopInput) {
 
   const dispatch = (action: string) => {
     console.log("Dispatching:", action);
-    
+
     if (action === "next_guest") {
       if (currentState.ordersCompletedToday >= 5) {
         currentState.orderFlow = "resource_settlement";
@@ -40,13 +40,13 @@ export function createGameLoop(input: GameLoopInput) {
         const guestKeys = Object.keys(GuestsDB);
         currentState.currentGuestId = guestKeys[Math.floor(Math.random() * guestKeys.length)];
         currentState.currentOrder = OrdersDB[Math.floor(Math.random() * OrdersDB.length)];
-        
+
         // Reset drink
         currentState.drink = {
           baseSpirit: null, baseWaveShape: null, strength: 0, sweetness: 0,
           acidity: 0, temperature: 20, sparkle: 0, volume: 0, actions: []
         };
-        
+
         currentState.orderFlow = "guest_enter";
       }
     } else if (action === "take_order") {
@@ -57,7 +57,7 @@ export function createGameLoop(input: GameLoopInput) {
       currentState.resources.power = 18;  // Reset power
       currentState.day += 1;
       currentState.ordersCompletedToday = 0;
-      
+
       if (currentState.resources.money <= 0 || currentState.resources.power <= 0 || currentState.resources.rating <= 0) {
         alert("GAME OVER! You ran out of resources.");
         location.reload(); // simple reset for MVP
@@ -70,28 +70,28 @@ export function createGameLoop(input: GameLoopInput) {
         const targetWave = generateWave(currentState.currentOrder.targetParams);
         const currentParams = drinkStateToWaveParams(currentState.drink);
         const currentWave = generateWave(currentParams);
-        
+
         const rawScore = calcMseScore(targetWave, currentWave);
         // apply penalties
         let finalScore = rawScore;
         if (currentState.drink.volume > 200) finalScore -= 10; // overflow
-        
+
         currentState.lastScore = Math.max(0, finalScore);
-        
+
         // apply to economy
         const rewardBase = currentState.currentOrder.rewardBase;
         const scoreBonus = finalScore >= 60 ? Math.floor(rewardBase * ((finalScore - 60) / 40)) : 0;
         const tip = finalScore >= 90 ? 10 : 0;
-        
+
         currentState.resources.money += Math.max(6, rewardBase + scoreBonus + tip);
         currentState.resources.power -= 1; // 1 power per order
-        
+
         if (finalScore >= 95) currentState.resources.rating += 4;
         else if (finalScore >= 80) currentState.resources.rating += 2;
         else if (finalScore >= 60) currentState.resources.rating += 0;
         else if (finalScore >= 40) currentState.resources.rating -= 3;
         else currentState.resources.rating -= 6;
-        
+
         currentState.ordersCompletedToday += 1;
         currentState.orderFlow = "result";
       }
@@ -117,46 +117,48 @@ export function createGameLoop(input: GameLoopInput) {
 
   const handleMouseDown = (e: MouseEvent) => {
     if (currentState.orderFlow !== "mixing_view") return;
-    
+
     const rect = input.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     currentState.mouse.isDown = true;
-    
+
     // Hit detection for items
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const tableY = h - 250;
-    
+    const tableY = h - 300; // Updated table position
+
     const isInside = (px: number, py: number, rx: number, ry: number, rw: number, rh: number) => {
       return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
     };
 
-    // 1. Spirits (Left)
-    if (isInside(x, y, 40, tableY - 130, 280, 130)) {
-      if (x < 110) currentState.draggedItem = "select_vodka";
-      else if (x < 210) currentState.draggedItem = "select_gin";
+    const propY = tableY + 60;
+
+    // 1. Spirits (Left) - Size 80
+    if (isInside(x, y, 60, propY - 40, 320, 140)) {
+      if (x < 160) currentState.draggedItem = "select_vodka";
+      else if (x < 280) currentState.draggedItem = "select_gin";
       else currentState.draggedItem = "select_whisky";
       return;
     }
-    
-    // 2. Ice Box (Middle-ish)
-    if (isInside(x, y, w / 2 - 260, tableY - 70, 120, 80)) {
+
+    // 2. Ice Box (Middle-ish) - Size 100
+    if (isInside(x, y, w / 2 - 300, propY + 20, 120, 120)) {
       currentState.draggedItem = "add_ice";
       return;
     }
-    
-    // 3. Additives (Right)
-    if (isInside(x, y, w - 370, tableY - 110, 320, 100)) {
+
+    // 3. Additives (Right) - Size 60
+    if (isInside(x, y, w - 380, propY - 20, 350, 120)) {
       if (x < w - 280) currentState.draggedItem = "add_syrup";
-      else if (x < w - 180) currentState.draggedItem = "add_lemon";
+      else if (x < w - 160) currentState.draggedItem = "add_lemon";
       else currentState.draggedItem = "add_soda";
       return;
     }
-    
+
     // 4. Stir Tool
-    if (isInside(x, y, w / 2 + 130, tableY - 50, 140, 60)) {
+    if (isInside(x, y, w / 2 + 180, propY + 60, 140, 60)) {
       currentState.draggedItem = "stir";
       return;
     }
@@ -178,18 +180,18 @@ export function createGameLoop(input: GameLoopInput) {
     if (currentState.draggedItem) {
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const tableY = h - 250;
+      const tableY = h - 300;
       const cupX = w / 2;
-      const cupY = tableY - 40; 
-      const cupWidth = 90;
-      const cupHeight = 140;
+      const cupY = tableY + 180; // Corrected cup bottom Y from bar-renderer
+      const cupWidth = 80;
+      const cupHeight = 120;
       const cupTop = cupY - cupHeight;
-      
+
       // Check if dropped within a generous bounding box around the cup
-      const isOverCup = currentState.mouse.x > cupX - 80 && 
-                        currentState.mouse.x < cupX + 80 &&
-                        currentState.mouse.y > cupTop - 80 && 
-                        currentState.mouse.y < cupY + 40;
+      const isOverCup = currentState.mouse.x > cupX - 80 &&
+        currentState.mouse.x < cupX + 80 &&
+        currentState.mouse.y > cupTop - 80 &&
+        currentState.mouse.y < cupY + 40;
 
       if (isOverCup) {
         dispatch(currentState.draggedItem);
