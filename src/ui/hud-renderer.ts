@@ -39,7 +39,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <button class="btn" id="btn-vodka" data-action="select_vodka">伏特加</button>
         <button class="btn" id="btn-gin" data-action="select_gin">金酒</button>
         <button class="btn" id="btn-whisky" data-action="select_whisky">威士忌</button>
-        <button class="btn" id="btn-rum" data-action="select_rum">朗姆</button>
+        <button class="btn" id="btn-rum" data-action="select_rum">朗姆酒</button>
         
         <h4 style="margin:10px 0; color:#ff73a8; font-family:'Courier New', Courier, monospace;">添加剂 ADDITIVES</h4>
         <button class="btn" data-action="add_syrup">糖浆 (周期-)</button>

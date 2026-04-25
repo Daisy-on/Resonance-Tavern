@@ -54,5 +54,5 @@ export const spirits = [
   { id: "vodka", name: "伏特加" },
   { id: "gin", name: "琴酒" },
   { id: "whisky", name: "威士忌" },
-  { id: "rum", name: "朗姆" },
+  { id: "rum", name: "朗姆酒" },
 ] as const;

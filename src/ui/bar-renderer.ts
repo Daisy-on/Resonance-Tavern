@@ -17,17 +17,17 @@ export function renderBar(ctx: CanvasRenderingContext2D, width: number, height: 
 
   // ... (rest of the existing renderBar logic)
   if (["guest_enter", "dialogue", "mixing", "result"].includes(state.orderFlow)) {
-    // 2. Draw High-Res Bar Shelf (Liquor Cabinet)
+    // 2. 酒柜 (在最底层)
     drawHighResBarShelf(ctx, width, height);
 
-    // 3. Draw L-Shape Bar Counter
+    // 3. 吧台 (中间层，围合酒柜)
     drawLShapeTable(ctx, width, height);
 
-    // 4. Draw NPC (on the LEFT side, inside the L-shape corner)
+    // 4. NPC (处于客座区，最顶层)
     if (state.currentGuestId) {
-      const npcX = width * 0.12;
-      const npcY = height - 420;
-      drawNPC(ctx, npcX, npcY, 280, state.currentGuestId);
+      const npcX = width * 0.15; // 在吧台起点的左侧
+      const npcY = height - 340; // 放低高度，使其站在地面上 (底部大约在 height - 20)
+      drawNPC(ctx, npcX, npcY, 320, state.currentGuestId);
     }
 
     // 5. Draw Cup (Only if base spirit is selected, and FLOAT above table)
@@ -519,91 +519,124 @@ function drawCyberpunkBackground(ctx: CanvasRenderingContext2D, w: number, h: nu
 }
 
 function drawLShapeTable(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  const tableTopY = h - 130;
-  const lWidth = w * 0.4; // Width of the L-corner part
+  const tableTopY = h - 140;
+  const barFrontHeight = 140;
+  
+  // 吧台的起点 (NPC 的右侧)
+  const startX = w * 0.38;
+  // 向右上角延伸的斜臂深度 (模拟顺时针旋转 135 度的透视效果)
+  const armDepth = 120;
 
   ctx.save();
 
-  // Horizontal part (Main counter)
-  ctx.fillStyle = "#2a1a2e";
-  ctx.fillRect(0, tableTopY, w, 130);
-
-  // L-Corner Perspective Part (The "L" shape wrapping the NPC)
-  ctx.fillStyle = "#3a2a3e";
+  // 1. 吧台侧立面 (Side Face - 面向左侧的斜面)
+  ctx.fillStyle = "#150a18";
   ctx.beginPath();
-  ctx.moveTo(lWidth, tableTopY);
-  ctx.lineTo(lWidth + 100, tableTopY - 60); // Perspective corner
-  ctx.lineTo(0, tableTopY - 60);
-  ctx.lineTo(0, tableTopY);
+  ctx.moveTo(startX, tableTopY);
+  ctx.lineTo(startX + armDepth, tableTopY - armDepth);
+  ctx.lineTo(startX + armDepth, h);
+  ctx.lineTo(startX, h);
   ctx.closePath();
   ctx.fill();
 
-  // Table edge neon
+  // 2. 吧台正立面 (Front Face - 面向屏幕)
+  ctx.fillStyle = "#1a0f1e";
+  ctx.fillRect(startX, tableTopY, w - startX, barFrontHeight);
+
+  // 立面装饰线条 (商店柜台风格)
+  ctx.strokeStyle = "rgba(255, 45, 125, 0.1)";
+  ctx.lineWidth = 2;
+  for (let ix = startX + 50; ix < w; ix += 150) {
+    ctx.strokeRect(ix, tableTopY + 20, 100, barFrontHeight - 40);
+  }
+
+  // 3. 吧台顶面 (Top Surface - 包含横向和斜向)
+  ctx.fillStyle = "#2a1a2e";
+  ctx.beginPath();
+  // 外边缘
+  ctx.moveTo(startX + armDepth, tableTopY - armDepth); // 斜臂外侧远端
+  ctx.lineTo(startX, tableTopY); // 吧台左前角
+  ctx.lineTo(w, tableTopY); // 吧台右前角
+  // 内边缘
+  ctx.lineTo(w, tableTopY - 40); // 吧台右后角
+  ctx.lineTo(startX + 40, tableTopY - 40); // 吧台内拐角
+  ctx.lineTo(startX + 40 + armDepth, tableTopY - 40 - armDepth); // 斜臂内侧远端
+  ctx.closePath();
+  ctx.fill();
+
+  // 4. 吧台边缘霓虹灯 (Neon Edge)
   ctx.strokeStyle = "#ff2d7d";
-  ctx.lineWidth = 4;
-  ctx.shadowBlur = 15;
+  ctx.lineWidth = 3;
+  ctx.shadowBlur = 10;
   ctx.shadowColor = "#ff2d7d";
 
-  // Main horizontal edge
+  // 主边缘 (外侧)
   ctx.beginPath();
-  ctx.moveTo(0, tableTopY);
+  ctx.moveTo(startX + armDepth, tableTopY - armDepth);
+  ctx.lineTo(startX, tableTopY);
   ctx.lineTo(w, tableTopY);
   ctx.stroke();
 
-  // Perspective edge
+  // 底边加强 (仅正面)
+  ctx.strokeStyle = "rgba(255, 45, 125, 0.3)";
   ctx.beginPath();
-  ctx.moveTo(0, tableTopY - 60);
-  ctx.lineTo(lWidth + 100, tableTopY - 60);
-  ctx.lineTo(lWidth, tableTopY);
+  ctx.moveTo(startX, tableTopY + 5);
+  ctx.lineTo(w, tableTopY + 5);
   ctx.stroke();
 
   ctx.restore();
 }
 
 function drawHighResBarShelf(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  const shelfX = w * 0.4;
-  const shelfY = 40;
-  const shelfW = w * 0.55;
-  const shelfH = h * 0.6;
+  const tableTopY = h - 140;
+  const startX = w * 0.38; // 吧台左侧起点
+  
+  // 酒柜位于斜臂内侧的右边，吧台横面的后方
+  const shelfX = startX + 80; 
+  const shelfY = 60;
+  const shelfW = w * 0.95 - shelfX; // 填满右侧剩余空间
+  const shelfBottomY = tableTopY - 40; // 刚好在吧台横向顶面的后沿
+  const shelfH = shelfBottomY - shelfY;
 
   // Background wall pattern
-  ctx.fillStyle = "#1a0a1a";
+  ctx.fillStyle = "#120512";
   ctx.fillRect(shelfX, shelfY, shelfW, shelfH);
 
-  // Detailed Shelf Structure (128-res like detail)
+  // Detailed Shelf Structure
   ctx.fillStyle = "#2a1a2e";
-  for (let i = 0; i < 4; i++) {
-    const y = shelfY + 80 + i * 110;
+  const rows = 3;
+  const rowSpacing = shelfH / rows;
+
+  for (let i = 0; i < rows; i++) {
+    const y = shelfY + 80 + i * rowSpacing;
+    if (y > shelfBottomY - 20) continue;
+
     // Shelf wood
-    ctx.fillRect(shelfX - 20, y, shelfW + 40, 15);
+    ctx.fillRect(shelfX - 10, y, shelfW + 20, 12);
 
     // Detailed bottles
-    for (let bx = shelfX + 30; bx < shelfX + shelfW - 30; bx += 25) {
+    for (let bx = shelfX + 20; bx < shelfX + shelfW - 20; bx += 22) {
       const seed = (i * 100) + bx;
-      if (Math.sin(seed) > -0.2) {
-        const bH = 40 + Math.abs(Math.cos(seed)) * 30;
-        const bW = 12 + Math.abs(Math.sin(seed * 2)) * 8;
+      if (Math.sin(seed) > -0.3) {
+        const bH = 35 + Math.abs(Math.cos(seed)) * 25;
+        const bW = 10 + Math.abs(Math.sin(seed * 2)) * 6;
 
         // Bottle body
         const hue = Math.abs(Math.sin(seed * 3)) * 360;
-        ctx.fillStyle = `hsla(${hue}, 60%, 40%, 0.9)`;
+        ctx.fillStyle = `hsla(${hue}, 50%, 35%, 0.8)`;
         ctx.fillRect(bx, y - bH, bW, bH);
 
         // Label
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.fillRect(bx + 2, y - bH + 10, bW - 4, 15);
-
-        // Neck
-        ctx.fillStyle = `hsla(${hue}, 60%, 20%, 0.9)`;
-        ctx.fillRect(bx + bW / 4, y - bH - 10, bW / 2, 10);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fillRect(bx + 2, y - bH + 8, bW - 4, 12);
       }
     }
   }
 
   // Vertical supports
   ctx.fillStyle = "#0a0a0a";
-  ctx.fillRect(shelfX + 10, shelfY, 10, shelfH);
-  ctx.fillRect(shelfX + shelfW - 20, shelfY, 10, shelfH);
+  ctx.fillRect(shelfX, shelfY, 8, shelfH);
+  ctx.fillRect(shelfX + shelfW - 8, shelfY, 8, shelfH);
 }
 
 function drawNPC(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, guestId: string) {
