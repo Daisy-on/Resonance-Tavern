@@ -17,7 +17,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     uiLayer.innerHTML = `
       <div id="status-panel" class="panel">
         <div id="status-toggle">
-          <h3 style="margin:0;">状态 STATUS</h3>
+          <h3 style="margin:0; font-size: 1.1em; letter-spacing: 1px;">状态 STATUS</h3>
           <span id="toggle-icon">[+]</span>
         </div>
         <div id="status-content">

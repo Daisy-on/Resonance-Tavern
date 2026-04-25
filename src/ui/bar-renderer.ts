@@ -120,21 +120,16 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
 
   drawOscilloscope(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight);
 
-  // 1. Draw parameters in TOP-RIGHT of oscilloscope screen
-  if (state.drink.baseSpirit) {
-    ctx.fillStyle = "rgba(115, 242, 255, 0.7)";
-    ctx.font = "12px 'Courier New', monospace";
-    ctx.textAlign = "right";
-    const d = state.drink;
-    ctx.fillText(`振幅:${d.amplitude} 周期:${d.periodLevel} 相位:${d.phaseStep}`, waveAreaX + waveAreaWidth - 10, waveAreaY - waveAreaHeight / 2 + 20);
-    ctx.fillText(`边缘:${d.edgeSharpness} 毛刺:${d.noiseLevel} 谐波:${d.harmonics} 拖尾:${d.decay}`, waveAreaX + waveAreaWidth - 10, waveAreaY - waveAreaHeight / 2 + 35);
-    ctx.textAlign = "left";
-  }
+  // 2. Draw order and event info OUTSIDE at the BOTTOM of oscilloscope screen
+  const screenBottomY = waveAreaY + waveAreaHeight / 2;
+  const infoY = screenBottomY + 30;
 
-  // 2. Draw order and event info at the BOTTOM of oscilloscope screen
-  const infoY = waveAreaY + waveAreaHeight / 2 - 40;
   if (state.currentOrder) {
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    // Text background for better legibility outside the screen
+    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.fillRect(w / 2 - 250, screenBottomY + 10, 500, 80);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
     ctx.font = "italic 14px Arial";
     ctx.textAlign = "center";
     ctx.fillText(`“${state.currentOrder.moodText}”`, w / 2, infoY);
@@ -170,10 +165,10 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
       else if (cp.decay - tp.decay > 10) hint = "拖尾衰减过快，建议使用喷枪";
 
       if (hint) {
-        ctx.fillStyle = "rgba(115, 242, 255, 0.9)";
-        ctx.font = "14px Arial";
+        ctx.fillStyle = "rgba(115, 242, 255, 1)";
+        ctx.font = "bold 14px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(`[提示] ${hint}`, w / 2, waveAreaY + waveAreaHeight / 2 - 15);
+        ctx.fillText(`[提示] ${hint}`, w / 2, screenBottomY + 70);
         ctx.textAlign = "left";
       }
     }
@@ -182,6 +177,28 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
     const currentParams = drinkStateToWaveParams(state.drink);
     const currentWave = generateWave(currentParams);
     drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, currentWave, "rgba(95, 240, 255, 1)", 3.5, false);
+  }
+
+  // 3. Draw real-time parameters in TOP-RIGHT of oscilloscope screen (High visibility)
+  if (state.drink.baseSpirit) {
+    ctx.save();
+    const d = state.drink;
+    const padding = 10;
+    const textX = waveAreaX + waveAreaWidth - padding;
+    const textY = waveAreaY - waveAreaHeight / 2 + 25;
+
+    // Small dark glow background for text
+    ctx.shadowColor = "rgba(0,0,0,0.8)";
+    ctx.shadowBlur = 4;
+    
+    ctx.fillStyle = "rgba(115, 242, 255, 0.9)";
+    ctx.font = "bold 13px 'Courier New', monospace";
+    ctx.textAlign = "right";
+    
+    ctx.fillText(`振幅:${d.amplitude} 周期:${d.periodLevel} 相位:${d.phaseStep}`, textX, textY);
+    ctx.fillText(`边缘:${d.edgeSharpness} 毛刺:${d.noiseLevel} 谐波:${d.harmonics} 拖尾:${d.decay}`, textX, textY + 18);
+    
+    ctx.restore();
   }
 
   // Dragging Feedback
@@ -227,16 +244,17 @@ function drawSpiritsSet(ctx: CanvasRenderingContext2D, x: number, y: number, sta
   ctx.fillStyle = "#fff";
   ctx.fillText("金酒", x + 145, y - 10);
 
-  // Whisky - Increased size to 80
-  drawPixelSprite(ctx, x + 240, y, 80, PROP_SPRITES["whisky_bottle"]);
+  // Whisky - Increased size to 95 and taller
+  drawPixelSprite(ctx, x + 240, y - 15, 95, PROP_SPRITES["whisky_bottle"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("威士忌", x + 250, y - 10);
+  ctx.fillText("威士忌", x + 265, y - 25);
 
-  drawPixelSprite(ctx, x + 360, y, 80, PROP_SPRITES["rum_bottle"]);
+  // Rum - Increased size to 95 and taller
+  drawPixelSprite(ctx, x + 360, y - 15, 95, PROP_SPRITES["rum_bottle"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("朗姆", x + 385, y - 10);
+  ctx.fillText("朗姆", x + 395, y - 25);
   if (!state.inventory.includes("rum")) {
-    drawLockedOverlay(ctx, x + 360, y, 80, 80);
+    drawLockedOverlay(ctx, x + 360, y - 15, 95, 95);
   }
 }
 
@@ -254,8 +272,8 @@ function drawAdditivesSet(ctx: CanvasRenderingContext2D, x: number, y: number, s
   ctx.font = "bold 14px Arial";
   ctx.fillText("糖浆", x + 5, y - 10);
 
-  // Lemon
-  drawPixelSprite(ctx, x + 120, y + 40, 60, PROP_SPRITES["lemon_slice"]);
+  // Lemon - Aligned with other props
+  drawPixelSprite(ctx, x + 105, y, 60, PROP_SPRITES["lemon_slice"]);
   ctx.fillStyle = "#fff";
   ctx.fillText("柠檬", x + 120, y - 10);
 
@@ -280,43 +298,53 @@ function drawAdditivesSet(ctx: CanvasRenderingContext2D, x: number, y: number, s
 function drawStirTools(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
   ctx.strokeStyle = "#888";
   ctx.lineWidth = 4;
+  
+  // 顺搅 (CW) - Vertical stick
   ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x + 70, y);
+  ctx.moveTo(x + 30, y);
+  ctx.lineTo(x + 30, y + 60);
   ctx.stroke();
+  
+  // 逆搅 (CCW) - Vertical stick
   ctx.beginPath();
-  ctx.moveTo(x + 90, y);
-  ctx.lineTo(x + 160, y);
+  ctx.moveTo(x + 110, y);
+  ctx.lineTo(x + 110, y + 60);
   ctx.stroke();
+  
   ctx.fillStyle = "#fff";
-  ctx.fillText("顺搅", x + 20, y + 20);
-  ctx.fillText("逆搅", x + 110, y + 20);
+  ctx.font = "bold 14px Arial";
+  ctx.fillText("顺搅", x + 15, y + 80);
+  ctx.fillText("逆搅", x + 95, y + 80);
+  
   if (!state.inventory.includes("stir_tool")) {
-    drawLockedOverlay(ctx, x, y - 30, 180, 50);
+    drawLockedOverlay(ctx, x, y - 10, 160, 100);
   }
 }
 
 function drawAdvancedTools(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
+  // Shaker - Aligned with row above
   drawPixelSprite(ctx, x, y, 56, PROP_SPRITES["shaker"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("摇壶", x + 12, y - 8);
+  ctx.font = "bold 14px Arial";
+  ctx.fillText("摇壶", x + 10, y - 10);
   if (!state.inventory.includes("shake_tool")) {
     drawLockedOverlay(ctx, x, y, 56, 56);
   }
 
-  drawPixelSprite(ctx, x + 90, y, 56, PROP_SPRITES["dropper"]);
+  // Measure Cup - Aligned with row above
+  drawPixelSprite(ctx, x + 100, y, 56, PROP_SPRITES["dropper"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("量杯", x + 76, y - 8);
+  ctx.fillText("量杯", x + 110, y - 10);
   if (!state.inventory.includes("measure_cup")) {
-    drawLockedOverlay(ctx, x + 90, y, 56, 56);
+    drawLockedOverlay(ctx, x + 100, y, 56, 56);
   }
 
-  // Placeholder for flame_tool
-  drawPixelSprite(ctx, x + 180, y, 56, PROP_SPRITES["shaker"]); // Use shaker as placeholder
+  // Flame Tool - Aligned with row above
+  drawPixelSprite(ctx, x + 200, y, 56, PROP_SPRITES["shaker"]); // Use shaker as placeholder
   ctx.fillStyle = "#fff";
-  ctx.fillText("喷枪", x + 175, y - 8);
+  ctx.fillText("喷枪", x + 210, y - 10);
   if (!state.inventory.includes("flame_tool")) {
-    drawLockedOverlay(ctx, x + 180, y, 56, 56);
+    drawLockedOverlay(ctx, x + 200, y, 56, 56);
   }
 }
 
