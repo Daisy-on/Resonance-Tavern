@@ -122,25 +122,36 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
 
   // 2. Draw order and event info OUTSIDE at the BOTTOM of oscilloscope screen
   const screenBottomY = waveAreaY + waveAreaHeight / 2;
-  const infoY = screenBottomY + 30;
+  const infoY = screenBottomY + 35;
 
-  if (state.currentOrder) {
-    // Text background for better legibility outside the screen
-    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-    ctx.fillRect(w / 2 - 250, screenBottomY + 10, 500, 80);
+  if (state.currentOrder || state.activeEvent) {
+    // Text background for better legibility - Digital Display Style
+    const boxWidth = w * 0.7;
+    const boxHeight = 100;
+    const boxX = (w - boxWidth) / 2;
+    const boxY = screenBottomY + 10;
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-    ctx.font = "italic 14px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(`“${state.currentOrder.moodText}”`, w / 2, infoY);
-    ctx.textAlign = "left";
-  }
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+    
+    // Subtle border for the info box
+    ctx.strokeStyle = "rgba(115, 242, 255, 0.3)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
-  if (state.activeEvent) {
-    ctx.fillStyle = "#ff2d7d";
-    ctx.font = "bold 13px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(getEventDescription(state.activeEvent), w / 2, infoY + 20);
+    if (state.currentOrder) {
+      ctx.fillStyle = "#fff";
+      ctx.font = "italic 16px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`“${state.currentOrder.moodText}”`, w / 2, infoY);
+    }
+
+    if (state.activeEvent) {
+      ctx.fillStyle = "#ff73a8"; // Use a slightly softer pink
+      ctx.font = "bold 14px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(getEventDescription(state.activeEvent), w / 2, infoY + 25);
+    }
     ctx.textAlign = "left";
   }
 
@@ -148,7 +159,7 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
     const targetWave = generateWave(state.currentOrder.targetParams);
     drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 125, 175, 0.9)", 2, true);
 
-    // Draw realtime hints
+    // Draw realtime hints (Move them slightly lower if needed)
     if (state.drink.baseSpirit) {
       const tp = state.currentOrder.targetParams as any;
       const cp = state.drink;
@@ -168,7 +179,7 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
         ctx.fillStyle = "rgba(115, 242, 255, 1)";
         ctx.font = "bold 14px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(`[提示] ${hint}`, w / 2, screenBottomY + 70);
+        ctx.fillText(`[提示] ${hint}`, w / 2, screenBottomY + 85);
         ctx.textAlign = "left";
       }
     }

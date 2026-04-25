@@ -4,6 +4,27 @@ export interface GuestArchive {
   content: string;   // The unlocked background story
 }
 
+export interface DialogueOption {
+  text: string;
+  nextId?: string; // If undefined, ends dialogue and goes to mixing
+  affinityChange?: number;
+}
+
+export interface DialogueNode {
+  id: string;
+  text: string;
+  options: DialogueOption[];
+}
+
+// A full dialogue tree starting from a specific node
+export interface DialogueTree {
+  rootId: string;
+  nodes: Record<string, DialogueNode>;
+}
+
+// Type for dialogue entries in affinity levels (can be a simple string or a complex tree)
+export type DialogueEntry = string | DialogueTree;
+
 export interface GuestData {
   id: string;
   name: string;
@@ -18,10 +39,10 @@ export interface GuestData {
     bad: string;
     // Affinity-driven dynamic dialogues
     affinityLevels: {
-      neutral: string[];  // 0-20
-      friendly: string[]; // 21-50
-      trusted: string[];  // 51-80
-      resonant: string[]; // 81+
+      neutral: DialogueEntry[];  // 0-20
+      friendly: DialogueEntry[]; // 21-50
+      trusted: DialogueEntry[];  // 51-80
+      resonant: DialogueEntry[]; // 81+
     };
   };
   preferredWave: {
@@ -59,7 +80,43 @@ export const GuestsDB: Record<string, GuestData> = {
           "今天天际重工又发新公告了，又要强制更新固件，真麻烦。",
           "别看我的手，机油是勤奋的勋章。",
           "这种地方，最适合像我这样的人躲起来。",
-          "少说话，多倒酒，对谁都有好处。"
+          "少说话，多倒酒，对谁都有好处。",
+          {
+            rootId: "chen_neutral_tree_1",
+            nodes: {
+              "chen_neutral_tree_1": {
+                id: "chen_neutral_tree_1",
+                text: "今天有个小伙子拿着一个快报废的军用神经接驳器来找我，说是能在黑市卖个好价钱。",
+                options: [
+                  { text: "你收了吗？", nextId: "chen_neutral_tree_1_a", affinityChange: 5 },
+                  { text: "这听起来像是个麻烦。", nextId: "chen_neutral_tree_1_b" },
+                  { text: "不管这些，想喝点什么？" } // undefined nextId -> end dialogue
+                ]
+              },
+              "chen_neutral_tree_1_a": {
+                id: "chen_neutral_tree_1_a",
+                text: "当然没有。那种东西上面都带着追踪器，我可不想明天就被执法队破门而入。不过那小子看起来挺急需钱的...",
+                options: [
+                  { text: "每个人都有自己的难处。", nextId: "chen_neutral_tree_1_end", affinityChange: 5 },
+                  { text: "不惹麻烦是明智的。" }
+                ]
+              },
+              "chen_neutral_tree_1_b": {
+                id: "chen_neutral_tree_1_b",
+                text: "大麻烦。黑市里流出来的军用货，十有八九沾着血。我干这行这么久，这点嗅觉还是有的。",
+                options: [
+                  { text: "那还是别碰为妙。" }
+                ]
+              },
+              "chen_neutral_tree_1_end": {
+                id: "chen_neutral_tree_1_end",
+                text: "是啊... 难处。好了，不说这些了，给我来杯酒，把这机油味压下去。",
+                options: [
+                  { text: "马上就好。" }
+                ]
+              }
+            }
+          }
         ],
         friendly: [
           "你这调酒的动作，让我想起以前实验室里的精密操作，挺赏心悦目的。",

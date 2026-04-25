@@ -62,10 +62,33 @@ export function createGameLoop(input: GameLoopInput) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
-  const dispatch = (action: string) => {
+  const dispatch = (action: string | { type: string, payload: any }) => {
     console.log("Dispatching:", action);
 
-    if (action === "next_guest") {
+    if (typeof action === "object" && action.type === "select_dialogue_option") {
+      const optionIndex = action.payload;
+      if (!currentState.currentDialogueNode || !currentState.currentDialogueTree) return;
+      const option = currentState.currentDialogueNode.options[optionIndex];
+      if (!option) return;
+
+      if (option.affinityChange && currentState.currentGuestId) {
+        const current = currentState.guestAffinity[currentState.currentGuestId] || 0;
+        currentState.guestAffinity[currentState.currentGuestId] = Math.max(0, Math.min(100, current + option.affinityChange));
+      }
+
+      if (option.nextId) {
+        currentState.currentDialogueNode = currentState.currentDialogueTree.nodes[option.nextId];
+      } else {
+        // End dialogue, proceed to mixing
+        currentState.orderFlow = "mixing_view";
+      }
+      return;
+    }
+
+    // Convert action to string for the rest of the logic
+    const actionStr = typeof action === "string" ? action : action.type;
+
+    if (actionStr === "next_guest") {
       ensureDayUnlocks(currentState);
       if (currentState.ordersCompletedToday >= currentState.maxOrdersPerDay) {
         const { isBankrupt } = applyDailySettlement(currentState);
@@ -81,9 +104,9 @@ export function createGameLoop(input: GameLoopInput) {
 
         currentState.orderFlow = "guest_enter";
       }
-    } else if (action === "take_order") {
+    } else if (actionStr === "take_order") {
       currentState.orderFlow = "mixing_view";
-    } else if (action === "next_day") {
+    } else if (actionStr === "next_day") {
       if (checkGameOver(currentState)) {
         currentState.orderFlow = "game_over";
       } else {
@@ -95,7 +118,7 @@ export function createGameLoop(input: GameLoopInput) {
         pickDailyEvent(currentState);
       }
       saveGameState(currentState);
-    } else if (action === "submit") {
+    } else if (actionStr === "submit") {
       // Calculate score
       if (currentState.currentOrder && currentState.drink.baseSpirit) {
         const scoreResult = calcAdvancedScoreWithBreakdown(currentState.drink, currentState.currentOrder, currentState.activeEvent);
@@ -132,12 +155,12 @@ export function createGameLoop(input: GameLoopInput) {
         }
         saveGameState(currentState);
       }
-    } else if (action === "restart") {
+    } else if (actionStr === "restart") {
       currentState = createDefaultGameState();
       ensureDayUnlocks(currentState);
       saveGameState(currentState);
-    } else if (mixActions.has(action as MixActionType)) {
-      const mixAction = action as MixActionType;
+    } else if (mixActions.has(actionStr as MixActionType)) {
+      const mixAction = actionStr as MixActionType;
       ensureDayUnlocks(currentState);
       audioSystem.init(); // Initialize audio on first interaction
       if (mixAction === "add_ice") audioSystem.playIce();

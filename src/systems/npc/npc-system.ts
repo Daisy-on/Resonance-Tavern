@@ -1,5 +1,5 @@
 import type { GameState } from "../../game/game-state";
-import { GuestsDB } from "../../content/guests";
+import { GuestsDB, type DialogueEntry } from "../../content/guests";
 import { generateProceduralOrder, type OrderTemplate } from "../../content/orders";
 
 export type GuestOrder = {
@@ -35,7 +35,26 @@ export function generateNextGuest(state: GameState) {
   }
 
   // Set initial dialogue for the guest
-  state.currentDialogue = getGuestDialogue(state);
+  const dialogueEntry = getGuestDialogue(state);
+  
+  if (typeof dialogueEntry === "string") {
+    state.currentDialogue = dialogueEntry;
+    state.currentDialogueTree = null;
+    state.currentDialogueNode = null;
+  } else {
+    const rootNode = dialogueEntry.nodes[dialogueEntry.rootId];
+    if (rootNode) {
+      state.currentDialogueTree = dialogueEntry;
+      state.currentDialogueNode = rootNode;
+      state.currentDialogue = null;
+    } else {
+      // Fallback to a simple line when a dialogue tree is malformed.
+      const enterPool = GuestsDB[guestId]?.dialogues.enter ?? [];
+      state.currentDialogue = enterPool[Math.floor(Math.random() * enterPool.length)] ?? "...";
+      state.currentDialogueTree = null;
+      state.currentDialogueNode = null;
+    }
+  }
 }
 
 export function updateGuestAffinity(state: GameState, score: number) {
@@ -55,19 +74,32 @@ export function updateGuestAffinity(state: GameState, score: number) {
 /**
  * Returns a dynamic dialogue based on current affinity level
  */
-export function getGuestDialogue(state: GameState): string {
+export function getGuestDialogue(state: GameState): DialogueEntry {
   if (!state.currentGuestId) return "...";
 
   const guest = GuestsDB[state.currentGuestId];
+  if (!guest) return "...";
+
   const affinity = state.guestAffinity[state.currentGuestId] || 0;
 
   const levels = guest.dialogues.affinityLevels;
-  let pool: string[];
+  let pool: DialogueEntry[];
 
   if (affinity >= 81) pool = levels.resonant;
   else if (affinity >= 51) pool = levels.trusted;
   else if (affinity >= 21) pool = levels.friendly;
   else pool = levels.neutral;
 
-  return pool[Math.floor(Math.random() * pool.length)];
+  if (!pool || pool.length === 0) {
+    const fallbackPool = guest.dialogues.enter;
+    return fallbackPool[Math.floor(Math.random() * fallbackPool.length)] ?? "...";
+  }
+
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  if (picked === undefined || picked === null) {
+    const fallbackPool = guest.dialogues.enter;
+    return fallbackPool[Math.floor(Math.random() * fallbackPool.length)] ?? "...";
+  }
+
+  return picked;
 }

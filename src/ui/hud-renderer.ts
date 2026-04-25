@@ -1,12 +1,27 @@
 import type { GameState } from "../game/game-state";
 import { GuestsDB } from "../content/guests";
-import { getGuestDialogue } from "../systems/npc/npc-system";
+import { getEventDescription } from "../systems/event/event-system";
 
 type Dispatch = (actionType: any) => void;
 
 let isInitialized = false;
 let lastState: GameState | null = null;
 let isArchiveOpen = false;
+
+const GUEST_ACCENT_COLORS: Record<string, string> = {
+  mechanic_01: "#ff9b73",
+  hacker_01: "#73f2ff",
+  cop_01: "#7ddf8f",
+  exec_01: "#d4a6ff",
+  idol_01: "#ff73a8",
+  robot_01: "#a0b8ff",
+  drifter_01: "#ffd973",
+};
+
+function getGuestAccentColor(guestId: string | null): string {
+  if (!guestId) return "#ff73a8";
+  return GUEST_ACCENT_COLORS[guestId] ?? "#ff73a8";
+}
 
 export function renderHud(state: GameState, dispatch: Dispatch) {
   lastState = state;
@@ -30,7 +45,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       
       <div id="table-controls" style="display:none;">
         <button class="table-btn" data-action="reset">重做</button>
-        <button class="table-btn" id="btn-submit" data-action="submit">提交上酒</button>
+        <button class="table-btn" id="btn-submit" data-action="submit">上酒</button>
         <button class="table-btn" id="btn-profile-table">档案室</button>
       </div>
 
@@ -56,13 +71,18 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         
         <hr style="border-color:#73f2ff; margin: 10px 0; opacity: 0.3;">
         <button class="btn" data-action="reset">重做</button>
-        <button class="btn" id="btn-submit-orig" data-action="submit" style="border-color:#ff73a8; color:#ff73a8;">提交上酒</button>
+        <button class="btn" id="btn-submit-orig" data-action="submit" style="border-color:#ff73a8; color:#ff73a8;">上酒</button>
       </div>
       <div id="dialogue-panel" class="panel" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom: 1px solid rgba(255,115,168,0.3);">
-          <div id="guest-name" style="font-weight:bold; color:#ff73a8;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom: 1px solid rgba(255,115,168,0.3); gap:10px;">
+          <div id="guest-avatar-color" style="width:8px; height:28px; background:#ff73a8;"></div>
+          <div style="flex:1;">
+            <div id="guest-name" style="font-weight:bold; color:#ff73a8;"></div>
+            <div id="guest-title" style="font-size:0.85em; color:#73f2ff; opacity:0.85;"></div>
+          </div>
         </div>
         <div id="guest-dialogue" style="font-size:1.1em; line-height:1.4; min-height: 3em;"></div>
+        <div id="dialogue-options" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
         <button class="btn" id="btn-next" style="margin-top:10px;">接受订单</button>
       </div>
       <button id="btn-profile" class="btn" style="display:none;">档案室</button>
@@ -83,6 +103,14 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     document.addEventListener("click", (e) => {
       const target = e.target as HTMLElement;
       if (!lastState) return;
+
+      // Handle dialogue options
+      const dialogueOptionBtn = target.closest(".dialogue-option-btn");
+      if (dialogueOptionBtn) {
+        const optionIndex = parseInt(dialogueOptionBtn.getAttribute("data-option-index") || "0", 10);
+        dispatch({ type: "select_dialogue_option", payload: optionIndex });
+        return;
+      }
 
       // Handle drawer toggle
       if (target.id === "status-toggle" || target.closest("#status-toggle")) {
@@ -239,34 +267,60 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
   const diagPanel = document.getElementById("dialogue-panel");
   if (diagPanel) {
     const showDiag = state.orderFlow === "guest_enter" || state.orderFlow === "dialogue" || state.orderFlow === "mixing";
-    diagPanel.style.display = showDiag ? "block" : "none";
-
+    
     if (showDiag) {
+      (diagPanel as HTMLElement).style.display = "block";
+      
       const nameEl = document.getElementById("guest-name");
+      const titleEl = document.getElementById("guest-title");
       const textEl = document.getElementById("guest-dialogue");
+      const colorEl = document.getElementById("guest-avatar-color");
+      const optionsContainer = document.getElementById("dialogue-options");
       const nextBtn = document.getElementById("btn-next");
 
       const guest = state.currentGuestId ? GuestsDB[state.currentGuestId] : null;
-      if (nameEl) nameEl.textContent = guest ? `${guest.name} (${guest.title})` : "???";
+      if (nameEl) nameEl.textContent = guest ? guest.name : "UNKNOWN";
+      if (titleEl) titleEl.textContent = guest ? guest.title : "???";
+      if (colorEl) colorEl.style.backgroundColor = getGuestAccentColor(state.currentGuestId);
 
-      if (textEl) {
-        if (state.orderFlow === "guest_enter") {
-          // Use the fixed dialogue from state
-          const dialogue = state.currentDialogue || "...";
-          if (textEl.textContent !== dialogue) {
-            textEl.textContent = dialogue;
+      if (state.orderFlow === "guest_enter") {
+        // We are in interactive dialogue mode
+        if (state.currentDialogueNode) {
+          if (textEl) textEl.textContent = state.currentDialogueNode.text;
+          
+          // Render options
+          if (optionsContainer) {
+            optionsContainer.innerHTML = "";
+            state.currentDialogueNode.options.forEach((opt, idx) => {
+              const btn = document.createElement("button");
+              btn.className = "dialogue-option-btn w-full text-left bg-[#1a0f1e]/80 border border-[#73f2ff]/30 text-[#73f2ff] py-2 px-4 hover:bg-[#73f2ff]/20 hover:border-[#73f2ff] transition-all cursor-pointer font-light tracking-wide rounded";
+              btn.setAttribute("data-option-index", idx.toString());
+              btn.innerHTML = `<span class="opacity-50 mr-2">></span> ${opt.text}`;
+              optionsContainer.appendChild(btn);
+            });
           }
+          if (nextBtn) (nextBtn as HTMLElement).style.display = "none";
         } else {
-          const moodText = state.currentOrder ? state.currentOrder.moodText : "What can I get you?";
-          if (textEl.textContent !== moodText) {
-            textEl.textContent = moodText;
+          // Fallback to simple dialogue if no node is present
+          const fallbackLine = state.currentDialogue || guest?.dialogues.enter?.[0] || "...";
+          if (textEl) textEl.textContent = fallbackLine;
+          if (optionsContainer) optionsContainer.innerHTML = "";
+          if (nextBtn) {
+            (nextBtn as HTMLElement).style.display = "inline-block";
+            nextBtn.textContent = "开始调酒";
           }
         }
+      } else {
+        // In mixing mode, show the order request
+        if (textEl) {
+          const moodText = getEventDescription(state.activeEvent);
+          textEl.textContent = `[需求] ${moodText}`;
+        }
+        if (optionsContainer) optionsContainer.innerHTML = "";
+        if (nextBtn) (nextBtn as HTMLElement).style.display = "none";
       }
-
-      if (nextBtn) {
-        nextBtn.style.display = (state.orderFlow === "guest_enter") ? "inline-block" : "none";
-      }
+    } else {
+      (diagPanel as HTMLElement).style.display = "none";
     }
   }
 

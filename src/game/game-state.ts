@@ -1,6 +1,7 @@
 import type { DrinkState } from "../systems/mixology/drink-state";
 import { createEmptyDrinkState } from "../systems/mixology/drink-state";
 import type { OrderTemplate } from "../content/orders";
+import type { DialogueNode, DialogueTree } from "../content/guests";
 
 export type ResourceState = {
   money: number;
@@ -68,6 +69,8 @@ export type GameState = {
   inventory: string[];
   lastScoreBreakdown: ScoreBreakdown | null;
   currentDialogue: string | null;
+  currentDialogueNode: DialogueNode | null; // For interactive dialogue
+  currentDialogueTree: DialogueTree | null; // The active dialogue tree
 };
 
 export function createDefaultGameState(): GameState {
@@ -118,5 +121,7 @@ export function createDefaultGameState(): GameState {
     ],
     lastScoreBreakdown: null,
     currentDialogue: null,
+    currentDialogueNode: null,
+    currentDialogueTree: null,
   };
 }
