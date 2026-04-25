@@ -5,16 +5,18 @@ export type WaveParams = {
   frequency: number;
   decay: number;
   noise: number;
+  symmetry: number;
   baseShape: "sine" | "triangle" | "square";
 };
 
-export function drinkStateToWaveParams(state: DrinkState): WaveParams {
+export function drinkStateToWaveParams(drink: DrinkState): WaveParams {
   return {
-    amplitude: 0.4 + state.strength / 80,
-    frequency: 1.0 + state.sweetness / 35,
-    decay: 0.1 + (100 - state.temperature) / 150,
-    noise: state.sparkle / 120,
-    baseShape: state.baseWaveShape || "sine",
+    amplitude: 0.4 + drink.strength / 80,
+    frequency: 1.0 + drink.sweetness / 35,
+    decay: 0.1 + (100 - drink.temperature) / 150,
+    noise: drink.sparkle / 120,
+    symmetry: 1.0 - drink.acidity / 140, // 1.0 is symmetric
+    baseShape: drink.baseWaveShape || "sine",
   };
 }
 

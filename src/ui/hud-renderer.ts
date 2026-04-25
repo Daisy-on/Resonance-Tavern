@@ -63,6 +63,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         if (flow === "idle") dispatch("next_guest");
         else if (flow === "result") dispatch("next_guest");
         else if (flow === "resource_settlement") dispatch("next_day");
+        else if (flow === "game_over") dispatch("restart");
       }
     });
 
@@ -73,10 +74,14 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
   const statusText = document.getElementById("status-text");
   if (statusText) {
     statusText.innerHTML = `
-      第 ${state.day} 天 | 订单: ${state.ordersCompletedToday}/5<br/>
+      第 ${state.day} 天 | 订单: ${state.ordersCompletedToday}/${state.maxOrdersPerDay}<br/>
       资金: $${state.resources.money.toFixed(1)}<br/>
       电力: ${state.resources.power.toFixed(1)}<br/>
       评分: ${state.resources.rating.toFixed(1)}<br/>
+      今日耗材: $${state.dailyLedger.ingredientCostToday.toFixed(1)}<br/>
+      今日收入: $${state.dailyLedger.orderIncomeToday.toFixed(1)}<br/>
+      今日净收益: $${(state.dailyLedger.orderIncomeToday - state.dailyLedger.ingredientCostToday - state.dailyLedger.rentToday).toFixed(1)}<br/>
+      今日冰耗电: ${state.dailyLedger.powerFromIceToday.toFixed(1)}<br/>
       <hr style="border-color:#73f2ff; margin: 8px 0; opacity: 0.2;">
       容量: ${state.drink.volume}ml | 温度: ${state.drink.temperature}°C
     `;
@@ -143,7 +148,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
   // 4. Update Result/Central Panel
   const resPanel = document.getElementById("result-panel");
   if (resPanel) {
-    const showRes = state.orderFlow === "idle" || state.orderFlow === "result" || state.orderFlow === "resource_settlement";
+    const showRes = state.orderFlow === "idle" || state.orderFlow === "result" || state.orderFlow === "resource_settlement" || state.orderFlow === "game_over";
     resPanel.style.display = showRes ? "block" : "none";
 
     if (showRes) {
@@ -170,9 +175,23 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         if (nextBtn) nextBtn.textContent = "下一位客人";
       } else if (state.orderFlow === "resource_settlement") {
         if (titleEl) titleEl.textContent = "第 " + state.day + " 天结算";
-        if (scoreEl) scoreEl.textContent = "今日营业结束";
-        if (descEl) descEl.textContent = "房租和电力费用已扣除";
+        if (scoreEl) {
+          scoreEl.innerHTML = `
+            今日收入: $${state.dailyLedger.orderIncomeToday.toFixed(1)}<br/>
+            今日耗材: -$${state.dailyLedger.ingredientCostToday.toFixed(1)}<br/>
+            今日租金: -$${state.dailyLedger.rentToday.toFixed(1)}
+          `;
+        }
+        if (descEl) {
+          const net = state.dailyLedger.orderIncomeToday - state.dailyLedger.ingredientCostToday - state.dailyLedger.rentToday;
+          descEl.textContent = `日结净收益：$${net.toFixed(1)}`;
+        }
         if (nextBtn) nextBtn.textContent = "开始新的一天";
+      } else if (state.orderFlow === "game_over") {
+        if (titleEl) titleEl.textContent = "营业结束";
+        if (scoreEl) scoreEl.textContent = "任一核心资源归零，本局结束。";
+        if (descEl) descEl.textContent = "建议复盘：减少低分单、控制冰块与耗材成本。";
+        if (nextBtn) nextBtn.textContent = "重新开始";
       }
     }
   }

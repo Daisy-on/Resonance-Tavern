@@ -1,4 +1,4 @@
-﻿import type { MixAction } from "./mix-actions";
+import type { MixAction } from "./mix-actions";
 import type { DrinkState } from "./drink-state";
 import { SpiritsDB } from "../../content/spirits";
 import { AdditivesDB } from "../../content/ingredients";
@@ -62,11 +62,15 @@ export function applyMixAction(state: DrinkState, action: MixAction): DrinkState
         acidity: 0,
         temperature: 20,
         sparkle: 0,
+        blend: 0,
+        dilution: 0,
+        oxidation: 0,
+        smoke: 0,
+        aroma: 0,
         volume: 0,
-        actions: [],
+        maxVolume: 300,
+        actions: []
       };
-    case "submit":
-      break;
   }
 
   return newState;

@@ -1,11 +1,13 @@
-﻿export interface OrderTemplate {
+export interface OrderTemplate {
   id: string;
+  guestId?: string; // Optional binding to specific guest
   moodText: string;
   targetParams: {
     amplitude: number;
     frequency: number;
     decay: number;
     noise: number;
+    symmetry: number;
     baseShape: "sine" | "triangle" | "square";
   };
   difficulty: number;
@@ -15,21 +17,55 @@
 
 export const OrdersDB: OrderTemplate[] = [
   {
-    id: "order_calm",
-    moodText: "我需要冷静一下，频率越低越好，要冰的。",
-    targetParams: { amplitude: 0.6, frequency: 1.0, decay: 0.8, noise: 0.0, baseShape: "sine" },
-    difficulty: 1, allowVariance: 0.05, rewardBase: 20
+    id: "order_01",
+    guestId: "mechanic_01",
+    moodText: "今天太累了，来点温暖平滑的。不要加冰，越稳越好。",
+    targetParams: {
+      amplitude: 0.6,
+      frequency: 1.2,
+      decay: 0.1, // Warm
+      noise: 0.0,
+      symmetry: 1.0,
+      baseShape: "sine",
+    },
+    allowVariance: 0.05,
+    rewardBase: 30,
+    difficulty: 1,
   },
   {
-    id: "order_spike",
-    moodText: "今天太困了，给我最强烈的刺激，加点气泡最好！",
-    targetParams: { amplitude: 0.9, frequency: 2.0, decay: 0.3, noise: 0.5, baseShape: "square" },
-    difficulty: 2, allowVariance: 0.1, rewardBase: 25
+    id: "order_02",
+    guestId: "hacker_01",
+    moodText: "我需要刺激！大量气泡，高频毛刺，冰镇的！",
+    targetParams: {
+      amplitude: 0.8,
+      frequency: 2.0,
+      decay: 0.5, // Ice
+      noise: 0.8,
+      symmetry: 1.0,
+      baseShape: "triangle",
+    },
+    allowVariance: 0.1,
+    rewardBase: 40,
+    difficulty: 2,
   },
   {
-    id: "order_complex",
-    moodText: "想要点甜的，但不要太腻，要锐利一点的味道。",
-    targetParams: { amplitude: 0.5, frequency: 1.8, decay: 0.5, noise: 0.1, baseShape: "triangle" },
-    difficulty: 2, allowVariance: 0.05, rewardBase: 25
-  }
+    id: "order_03",
+    guestId: "cop_01",
+    moodText: "来杯烈酒，纯正的方波，带点酸味。",
+    targetParams: {
+      amplitude: 1.0,
+      frequency: 1.0,
+      decay: 0.2,
+      noise: 0.1,
+      symmetry: 0.8, // Acid
+      baseShape: "square",
+    },
+    allowVariance: 0.05,
+    rewardBase: 50,
+    difficulty: 2,
+  },
 ];
+
+export function getRandomGuestOrder(): OrderTemplate {
+  return OrdersDB[Math.floor(Math.random() * OrdersDB.length)];
+}

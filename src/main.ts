@@ -1,6 +1,7 @@
-﻿import "./styles.css";
+import "./styles.css";
 import { createGameLoop } from "./game/game-loop";
 import { createDefaultGameState } from "./game/game-state";
+import { loadGameState } from "./systems/save/save-system";
 
 const canvas = document.getElementById("game-canvas") as HTMLCanvasElement;
 if (!canvas) {
@@ -9,7 +10,7 @@ if (!canvas) {
 
 const game = createGameLoop({
   canvas,
-  state: createDefaultGameState(),
+  state: loadGameState() ?? createDefaultGameState(),
 });
 
 game.start();

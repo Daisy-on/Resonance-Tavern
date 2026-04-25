@@ -1,11 +1,20 @@
-import type { GameState } from "./game-state";
+import { createDefaultGameState, type GameState } from "./game-state";
 import { applyMixAction } from "../systems/mixology/mixology-system";
-import { generateWave, drinkStateToWaveParams } from "../systems/wave/wave-generator";
-import { calcMseScore } from "../systems/wave/wave-match";
-import { GuestsDB } from "../content/guests";
-import { OrdersDB } from "../content/orders";
+import { calcAdvancedScore } from "../systems/wave/wave-match";
+import { generateNextGuest, updateGuestAffinity } from "../systems/npc/npc-system";
 import { renderHud } from "../ui/hud-renderer";
 import { renderBar } from "../ui/bar-renderer";
+import {
+  applyIngredientCost,
+  applyOrderIncome,
+  applyOrderRating,
+  applyDailySettlement,
+  checkGameOver,
+  resetDailyLedger,
+} from "../systems/economy/economy-system";
+import { pickDailyEvent } from "../systems/event/event-system";
+import { audioSystem } from "../audio/audio-system";
+import { saveGameState } from "../systems/save/save-system";
 
 type GameLoopInput = {
   canvas: HTMLCanvasElement;
@@ -33,18 +42,19 @@ export function createGameLoop(input: GameLoopInput) {
     console.log("Dispatching:", action);
 
     if (action === "next_guest") {
-      if (currentState.ordersCompletedToday >= 5) {
-        currentState.orderFlow = "resource_settlement";
+      if (currentState.ordersCompletedToday >= currentState.maxOrdersPerDay) {
+        const { isBankrupt } = applyDailySettlement(currentState);
+        currentState.orderFlow = isBankrupt ? "game_over" : "resource_settlement";
+        saveGameState(currentState);
       } else {
-        // Pick a random guest and order
-        const guestKeys = Object.keys(GuestsDB);
-        currentState.currentGuestId = guestKeys[Math.floor(Math.random() * guestKeys.length)];
-        currentState.currentOrder = OrdersDB[Math.floor(Math.random() * OrdersDB.length)];
+        // Pick a random guest and order via NPC system
+        generateNextGuest(currentState);
 
         // Reset drink
         currentState.drink = {
           baseSpirit: null, baseWaveShape: null, strength: 0, sweetness: 0,
-          acidity: 0, temperature: 20, sparkle: 0, volume: 0, actions: []
+          acidity: 0, temperature: 20, sparkle: 0, blend: 0, dilution: 0,
+          oxidation: 0, smoke: 0, aroma: 0, volume: 0, maxVolume: 300, actions: []
         };
 
         currentState.orderFlow = "guest_enter";
@@ -52,50 +62,78 @@ export function createGameLoop(input: GameLoopInput) {
     } else if (action === "take_order") {
       currentState.orderFlow = "mixing_view";
     } else if (action === "next_day") {
-      // Settle resources
-      currentState.resources.money -= 30; // Rent
-      currentState.resources.power = 18;  // Reset power
-      currentState.day += 1;
-      currentState.ordersCompletedToday = 0;
-
-      if (currentState.resources.money <= 0 || currentState.resources.power <= 0 || currentState.resources.rating <= 0) {
-        alert("GAME OVER! You ran out of resources.");
-        location.reload(); // simple reset for MVP
-        return;
+      if (checkGameOver(currentState)) {
+        currentState.orderFlow = "game_over";
+      } else {
+        currentState.day += 1;
+        currentState.ordersCompletedToday = 0;
+        currentState.orderFlow = "idle";
+        resetDailyLedger(currentState);
+        pickDailyEvent(currentState);
       }
-      currentState.orderFlow = "idle";
+      saveGameState(currentState);
     } else if (action === "submit") {
       // Calculate score
       if (currentState.currentOrder && currentState.drink.baseSpirit) {
-        const targetWave = generateWave(currentState.currentOrder.targetParams);
-        const currentParams = drinkStateToWaveParams(currentState.drink);
-        const currentWave = generateWave(currentParams);
-
-        const rawScore = calcMseScore(targetWave, currentWave);
+        const rawScore = calcAdvancedScore(currentState.drink, currentState.currentOrder);
         // apply penalties
         let finalScore = rawScore;
         if (currentState.drink.volume > 200) finalScore -= 10; // overflow
+        
+        // Event modifier
+        if (currentState.activeEvent === "streamer" && finalScore >= 95) finalScore += 5;
 
         currentState.lastScore = Math.max(0, finalScore);
 
-        // apply to economy
-        const rewardBase = currentState.currentOrder.rewardBase;
-        const scoreBonus = finalScore >= 60 ? Math.floor(rewardBase * ((finalScore - 60) / 40)) : 0;
-        const tip = finalScore >= 90 ? 10 : 0;
-
-        currentState.resources.money += Math.max(6, rewardBase + scoreBonus + tip);
-        currentState.resources.power -= 1; // 1 power per order
-
-        if (finalScore >= 95) currentState.resources.rating += 4;
-        else if (finalScore >= 80) currentState.resources.rating += 2;
-        else if (finalScore >= 60) currentState.resources.rating += 0;
-        else if (finalScore >= 40) currentState.resources.rating -= 3;
-        else currentState.resources.rating -= 6;
+        if (finalScore >= 60) {
+          audioSystem.playSuccess();
+        } else {
+          audioSystem.playFail();
+        }
+        
+        // 订单提交后：只计算收入和评分（成本已在动作时实时扣除）
+        applyOrderIncome(currentState, currentState.lastScore);
+        applyOrderRating(currentState, currentState.lastScore);
+        
+        // Apply affinity
+        updateGuestAffinity(currentState, currentState.lastScore);
 
         currentState.ordersCompletedToday += 1;
         currentState.orderFlow = "result";
+        
+        // 单后失败判定
+        if (checkGameOver(currentState)) {
+          currentState.orderFlow = "game_over";
+        }
+        saveGameState(currentState);
       }
+    } else if (action === "restart") {
+      currentState = createDefaultGameState();
+      saveGameState(currentState);
     } else if (["select_vodka", "select_gin", "select_whisky", "add_syrup", "add_lemon", "add_soda", "add_ice", "stir", "reset"].includes(action)) {
+      audioSystem.init(); // Initialize audio on first interaction
+      if (action === "add_ice") audioSystem.playIce();
+      else if (action !== "stir" && action !== "reset") audioSystem.playPour();
+
+      const actionToIngredient: Record<string, string> = {
+        select_vodka: "vodka",
+        select_gin: "gin",
+        select_whisky: "whisky",
+        add_syrup: "simple_syrup",
+        add_lemon: "lemon_juice",
+        add_soda: "soda_water",
+        add_ice: "ice_cube",
+      };
+      const ingredientId = actionToIngredient[action];
+      if (ingredientId) {
+        applyIngredientCost(currentState, ingredientId);
+        if (checkGameOver(currentState)) {
+          currentState.orderFlow = "game_over";
+          saveGameState(currentState);
+          return;
+        }
+      }
+
       if (currentState.orderFlow === "guest_enter") {
         // First action starts mixing
         currentState.orderFlow = "mixing";
