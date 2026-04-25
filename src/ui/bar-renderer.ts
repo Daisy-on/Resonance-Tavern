@@ -55,12 +55,12 @@ export function renderBar(ctx: CanvasRenderingContext2D, width: number, height: 
     // Waves...
     if (state.currentOrder) {
       const targetWave = generateWave(state.currentOrder.targetParams);
-      drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 115, 168, 0.4)", 3, true);
+      drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 125, 175, 0.9)", 2, true);
     }
     if (state.drink.baseSpirit) {
       const currentParams = drinkStateToWaveParams(state.drink);
       const currentWave = generateWave(currentParams);
-      drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, currentWave, "rgba(115, 242, 255, 0.9)", 3, false);
+      drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, currentWave, "rgba(95, 240, 255, 1)", 3.5, false);
     }
   }
 }
@@ -103,10 +103,10 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   drawPixelCup(ctx, cupX, cupY, 80, 120, state.drink);
 
   // Right: Additives
-  drawAdditivesSet(ctx, w - 520, propY - 20, state);
+  drawAdditivesSet(ctx, w - 620, propY - 20, state);
 
-  // Right: Stir Tool
-  drawStirTool(ctx, w / 2 + 100, propY + 60, state);
+  // Right: Stir tools (CW / CCW)
+  drawStirTools(ctx, w / 2 + 70, propY + 60, state);
 
   // Right: Advanced Tools (Second row)
   drawAdvancedTools(ctx, w - 380, propY + 100, state);
@@ -120,12 +120,12 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   drawOscilloscope(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight);
   if (state.currentOrder) {
     const targetWave = generateWave(state.currentOrder.targetParams);
-    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 115, 168, 0.4)", 2, true);
+    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 125, 175, 0.9)", 2, true);
   }
   if (state.drink.baseSpirit) {
     const currentParams = drinkStateToWaveParams(state.drink);
     const currentWave = generateWave(currentParams);
-    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, currentWave, "rgba(115, 242, 255, 0.9)", 2, false);
+    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, currentWave, "rgba(95, 240, 255, 1)", 3.5, false);
   }
 
   // Dragging Feedback
@@ -208,25 +208,35 @@ function drawAdditivesSet(ctx: CanvasRenderingContext2D, x: number, y: number, s
   ctx.fillStyle = "#fff";
   ctx.fillText("苏打水", x + 250, y - 10);
 
-  drawPixelSprite(ctx, x + 340, y, 60, PROP_SPRITES["bitters_bottle"]);
+  // Frequency reducer (Day 1)
+  drawPixelSprite(ctx, x + 340, y, 60, PROP_SPRITES["tonic_vial"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("苦精", x + 350, y - 10);
+  ctx.fillText("捣拌棒", x + 345, y - 10);
+
+  drawPixelSprite(ctx, x + 440, y, 60, PROP_SPRITES["bitters_bottle"]);
+  ctx.fillStyle = "#fff";
+  ctx.fillText("苦精", x + 450, y - 10);
   if (!state.inventory.includes("bitters")) {
-    drawLockedOverlay(ctx, x + 340, y, 60, 60);
+    drawLockedOverlay(ctx, x + 440, y, 60, 60);
   }
 }
 
-function drawStirTool(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
+function drawStirTools(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
   ctx.strokeStyle = "#888";
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(x, y);
-  ctx.lineTo(x + 100, y);
+  ctx.lineTo(x + 70, y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 90, y);
+  ctx.lineTo(x + 160, y);
   ctx.stroke();
   ctx.fillStyle = "#fff";
-  ctx.fillText("搅拌", x + 35, y + 20);
+  ctx.fillText("顺搅", x + 20, y + 20);
+  ctx.fillText("逆搅", x + 110, y + 20);
   if (!state.inventory.includes("stir_tool")) {
-    drawLockedOverlay(ctx, x, y - 30, 120, 50);
+    drawLockedOverlay(ctx, x, y - 30, 180, 50);
   }
 }
 
@@ -285,11 +295,15 @@ function drawDraggedPreview(ctx: CanvasRenderingContext2D, x: number, y: number,
     drawPixelSprite(ctx, -20, -40, 40, PROP_SPRITES["soda_can"]);
     ctx.fillStyle = "#fff";
     ctx.fillText("苏打水", 0, 35);
+  } else if (item === "add_tonic") {
+    drawPixelSprite(ctx, -20, -40, 40, PROP_SPRITES["tonic_vial"]);
+    ctx.fillStyle = "#fff";
+    ctx.fillText("捣拌棒", -10, 35);
   } else if (item === "add_bitters") {
     drawPixelSprite(ctx, -20, -40, 40, PROP_SPRITES["bitters_bottle"]);
     ctx.fillStyle = "#fff";
     ctx.fillText("苦精", 0, 35);
-  } else if (item === "stir") {
+  } else if (item === "stir" || item === "stir_cw") {
     ctx.strokeStyle = "#aaa";
     ctx.lineWidth = 8;
     ctx.beginPath();
@@ -297,7 +311,16 @@ function drawDraggedPreview(ctx: CanvasRenderingContext2D, x: number, y: number,
     ctx.lineTo(60, 0);
     ctx.stroke();
     ctx.fillStyle = "#fff";
-    ctx.fillText("搅拌", -10, 20);
+    ctx.fillText("顺时针", -20, 20);
+  } else if (item === "stir_ccw") {
+    ctx.strokeStyle = "#aaa";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(-60, 0);
+    ctx.lineTo(60, 0);
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.fillText("逆时针", -20, 20);
   } else if (item === "shake") {
     drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["shaker"]);
     ctx.fillStyle = "#fff";

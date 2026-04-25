@@ -66,6 +66,9 @@ export function generateNextGuest(state: GameState) {
   if (state.guestAffinity[guestId] === undefined) {
     state.guestAffinity[guestId] = 0;
   }
+  
+  // Set initial dialogue for the guest
+  state.currentDialogue = getGuestDialogue(state);
 }
 
 export function updateGuestAffinity(state: GameState, score: number) {
@@ -78,5 +81,28 @@ export function updateGuestAffinity(state: GameState, score: number) {
   else if (score < 40) delta = -2;
   
   state.guestAffinity[state.currentGuestId] += delta;
-  // Cap at max affinity if needed
+  // Cap at 100 for now
+  state.guestAffinity[state.currentGuestId] = Math.min(100, Math.max(-20, state.guestAffinity[state.currentGuestId]));
+}
+
+/**
+ * Returns a dynamic dialogue based on current affinity level
+ */
+export function getGuestDialogue(state: GameState): string {
+  if (!state.currentGuestId) return "...";
+  
+  const guest = GuestsDB[state.currentGuestId];
+  const affinity = state.guestAffinity[state.currentGuestId] || 0;
+  
+  const levels = guest.dialogues.affinityLevels;
+  let pool: string[];
+  
+  if (affinity >= 81) pool = levels.resonant;
+  else if (affinity >= 51) pool = levels.trusted;
+  else if (affinity >= 21) pool = levels.friendly;
+  else pool = levels.neutral;
+  
+  // If we have an order mood text, we might want to blend it or use it as priority
+  // For now, let's just pick a random one from the affinity pool
+  return pool[Math.floor(Math.random() * pool.length)];
 }

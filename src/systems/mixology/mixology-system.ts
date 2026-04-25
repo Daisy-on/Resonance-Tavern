@@ -16,6 +16,7 @@ const ACTION_INGREDIENT_MAP: Partial<Record<MixActionType, string>> = {
   add_syrup: "simple_syrup",
   add_lemon: "lemon_juice",
   add_soda: "soda_water",
+  add_tonic: "tonic_essence",
   add_bitters: "bitters",
   add_ice: "ice_cube",
 };
@@ -50,11 +51,6 @@ export function applyMixAction(state: DrinkState, action: MixAction): DrinkState
 
     if (ing.id === "bitters") {
       newState.oxidation = clamp(newState.oxidation + 10, 0, 100);
-      newState.phaseOffset += PHASE_STEP / 2;
-    }
-
-    if (ing.id === "simple_syrup") {
-      newState.blend = clamp(newState.blend + 4, 0, 100);
     }
   };
 
@@ -80,6 +76,9 @@ export function applyMixAction(state: DrinkState, action: MixAction): DrinkState
     case "add_soda":
       applyIngredient("soda_water", AdditivesDB);
       break;
+    case "add_tonic":
+      applyIngredient("tonic_essence", AdditivesDB);
+      break;
     case "add_bitters":
       applyIngredient("bitters", AdditivesDB);
       break;
@@ -87,14 +86,18 @@ export function applyMixAction(state: DrinkState, action: MixAction): DrinkState
       applyIngredient("ice_cube", AdditivesDB);
       break;
     case "stir":
+      // Backward compatibility: old stir behaves as clockwise stir.
       newState.phaseOffset += PHASE_STEP;
-      newState.blend = clamp(newState.blend + 6, 0, 100);
-      newState.sparkle = clamp(newState.sparkle - 5, 0, 100);
+      break;
+    case "stir_cw":
+      newState.phaseOffset += PHASE_STEP;
+      break;
+    case "stir_ccw":
+      newState.phaseOffset -= PHASE_STEP;
       break;
     case "shake":
       newState.sparkle = clamp(newState.sparkle + 10, 0, 100);
       newState.blend = clamp(newState.blend + 8, 0, 100);
-      newState.phaseOffset += PHASE_STEP / 2;
       break;
     case "muddle":
       newState.acidity = clamp(newState.acidity + 6, 0, 100);
@@ -102,7 +105,6 @@ export function applyMixAction(state: DrinkState, action: MixAction): DrinkState
       break;
     case "pour_precise":
       newState.blend = clamp(newState.blend + 3, 0, 100);
-      newState.phaseOffset += PHASE_STEP / 4;
       break;
     case "flame":
       newState.temperature = clamp(newState.temperature + 8, -20, 50);

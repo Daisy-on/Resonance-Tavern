@@ -39,9 +39,12 @@ export function createGameLoop(input: GameLoopInput) {
     "add_syrup",
     "add_lemon",
     "add_soda",
+    "add_tonic",
     "add_bitters",
     "add_ice",
     "stir",
+    "stir_cw",
+    "stir_ccw",
     "shake",
     "muddle",
     "pour_precise",
@@ -139,7 +142,7 @@ export function createGameLoop(input: GameLoopInput) {
       ensureDayUnlocks(currentState);
       audioSystem.init(); // Initialize audio on first interaction
       if (mixAction === "add_ice") audioSystem.playIce();
-      else if (mixAction !== "stir" && mixAction !== "reset") audioSystem.playPour();
+      else if (!["stir", "stir_cw", "stir_ccw", "reset"].includes(mixAction)) audioSystem.playPour();
 
       const actionUnlockMap: Partial<Record<MixActionType, string>> = {
         select_vodka: "vodka",
@@ -149,9 +152,12 @@ export function createGameLoop(input: GameLoopInput) {
         add_syrup: "simple_syrup",
         add_lemon: "lemon_juice",
         add_soda: "soda_water",
+        add_tonic: "tonic_essence",
         add_bitters: "bitters",
         add_ice: "ice_cube",
         stir: "stir_tool",
+        stir_cw: "stir_tool",
+        stir_ccw: "stir_tool",
         shake: "shake_tool",
         muddle: "muddle_tool",
         pour_precise: "precision_tool",
@@ -220,9 +226,12 @@ export function createGameLoop(input: GameLoopInput) {
         add_syrup: "simple_syrup",
         add_lemon: "lemon_juice",
         add_soda: "soda_water",
+        add_tonic: "tonic_essence",
         add_bitters: "bitters",
         add_ice: "ice_cube",
         stir: "stir_tool",
+        stir_cw: "stir_tool",
+        stir_ccw: "stir_tool",
         shake: "shake_tool",
         pour_precise: "precision_tool",
       };
@@ -246,17 +255,22 @@ export function createGameLoop(input: GameLoopInput) {
     }
 
     // 3. Additives (Right) - Row 1
-    if (isInside(x, y, w - 520, propY - 40, 420, 100)) {
+    if (isInside(x, y, w - 620, propY - 40, 520, 100)) {
       if (x < w - 400) currentState.draggedItem = canDragAction("add_syrup") ? "add_syrup" : null;
       else if (x < w - 300) currentState.draggedItem = canDragAction("add_lemon") ? "add_lemon" : null;
-      else if (x < w - 180) currentState.draggedItem = canDragAction("add_soda") ? "add_soda" : null;
+      else if (x < w - 210) currentState.draggedItem = canDragAction("add_soda") ? "add_soda" : null;
+      else if (x < w - 120) currentState.draggedItem = canDragAction("add_tonic") ? "add_tonic" : null;
       else currentState.draggedItem = canDragAction("add_bitters") ? "add_bitters" : null;
       return;
     }
 
-    // 4. Stir Tool
-    if (isInside(x, y, w / 2 + 100, propY + 40, 140, 80)) {
-      currentState.draggedItem = canDragAction("stir") ? "stir" : null;
+    // 4. Stir Tools (CW / CCW)
+    if (isInside(x, y, w / 2 + 70, propY + 40, 180, 80)) {
+      if (x < w / 2 + 160) {
+        currentState.draggedItem = canDragAction("stir_cw") ? "stir_cw" : null;
+      } else {
+        currentState.draggedItem = canDragAction("stir_ccw") ? "stir_ccw" : null;
+      }
       return;
     }
 

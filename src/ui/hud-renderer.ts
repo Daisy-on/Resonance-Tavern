@@ -1,10 +1,12 @@
 import type { GameState } from "../game/game-state";
 import { GuestsDB } from "../content/guests";
+import { getGuestDialogue } from "../systems/npc/npc-system";
 
 type Dispatch = (actionType: any) => void;
 
 let isInitialized = false;
 let lastState: GameState | null = null;
+let isArchiveOpen = false;
 
 export function renderHud(state: GameState, dispatch: Dispatch) {
   lastState = state;
@@ -33,8 +35,10 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <button class="btn" data-action="add_lemon">柠檬 (酸度+)</button>
         <button class="btn" data-action="add_ice">冰块 (温度-)</button>
         <button class="btn" data-action="add_soda">苏打 (气泡+)</button>
+        <button class="btn" data-action="add_tonic">捣拌棒 (周期+)</button>
         <button class="btn" data-action="add_bitters">苦精 (微调)</button>
-        <button class="btn" data-action="stir">搅拌 (相位+)</button>
+        <button class="btn" data-action="stir_cw">顺时针搅拌 (相位+)</button>
+        <button class="btn" data-action="stir_ccw">逆时针搅拌 (相位-)</button>
         <button class="btn" data-action="shake">摇壶</button>
         <button class="btn" data-action="pour_precise">精准注入</button>
         
@@ -43,7 +47,10 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <button class="btn" id="btn-submit" data-action="submit" style="border-color:#ff73a8; color:#ff73a8;">提交上酒</button>
       </div>
       <div id="dialogue-panel" class="panel" style="display:none;">
-        <div id="guest-name" style="font-weight:bold; color:#ff73a8; margin-bottom:8px; border-bottom: 1px solid rgba(255,115,168,0.3);"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom: 1px solid rgba(255,115,168,0.3);">
+          <div id="guest-name" style="font-weight:bold; color:#ff73a8;"></div>
+          <button class="btn" id="btn-profile" style="font-size:0.7em; padding:2px 8px;">档案 PROFILE</button>
+        </div>
         <div id="guest-dialogue" style="font-size:1.1em; line-height:1.4; min-height: 3em;"></div>
         <button class="btn" id="btn-next" style="margin-top:10px;">接受订单</button>
       </div>
@@ -52,6 +59,12 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <div id="result-score" style="margin:20px 0;"></div>
         <div id="result-desc" style="margin-bottom:20px; font-style:italic; color:#aaa;"></div>
         <button class="btn" id="btn-result-next" style="width:100%; padding: 12px;">继续</button>
+      </div>
+      <div id="archive-overlay" class="modal-overlay" style="display:none;">
+        <div class="archive-modal">
+          <button class="btn" id="btn-close-archive" style="position:absolute; top:20px; right:20px;">关闭 X</button>
+          <div id="archive-content"></div>
+        </div>
       </div>
     `;
 
@@ -65,6 +78,15 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       }
       if (target.id === "btn-next") {
         dispatch("take_order");
+      }
+      if (target.id === "btn-profile") {
+        isArchiveOpen = true;
+        renderArchive(lastState);
+      }
+      if (target.id === "btn-close-archive" || target.closest("#btn-close-archive")) {
+        isArchiveOpen = false;
+        const overlay = document.getElementById("archive-overlay");
+        if (overlay) overlay.style.display = "none";
       }
       if (target.id === "btn-result-next") {
         const flow = lastState.orderFlow;
@@ -128,7 +150,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
   const actionsPanel = document.getElementById("actions-panel");
   if (actionsPanel) {
     // Hide original buttons in focused mixing view as we use drag and drop
-    const spiritGroup = actionsPanel.querySelectorAll("button[data-action^='select_'], button[data-action^='add_'], button[data-action='stir']");
+    const spiritGroup = actionsPanel.querySelectorAll("button[data-action^='select_'], button[data-action^='add_'], button[data-action='stir'], button[data-action='stir_cw'], button[data-action='stir_ccw']");
     spiritGroup.forEach(btn => {
       (btn as HTMLElement).style.display = state.orderFlow === "mixing_view" ? "none" : "inline-block";
     });
@@ -151,8 +173,11 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       add_lemon: "lemon_juice",
       add_ice: "ice_cube",
       add_soda: "soda_water",
+      add_tonic: "tonic_essence",
       add_bitters: "bitters",
       stir: "stir_tool",
+      stir_cw: "stir_tool",
+      stir_ccw: "stir_tool",
       shake: "shake_tool",
       pour_precise: "precision_tool",
       flame: "flame_tool",
@@ -191,9 +216,16 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
 
       if (textEl) {
         if (state.orderFlow === "guest_enter") {
-          textEl.textContent = guest ? guest.dialogues.enter[0] : "...";
+          // Use the fixed dialogue from state
+          const dialogue = state.currentDialogue || "...";
+          if (textEl.textContent !== dialogue) {
+            textEl.textContent = dialogue;
+          }
         } else {
-          textEl.textContent = state.currentOrder ? state.currentOrder.moodText : "What can I get you?";
+          const moodText = state.currentOrder ? state.currentOrder.moodText : "What can I get you?";
+          if (textEl.textContent !== moodText) {
+            textEl.textContent = moodText;
+          }
         }
       }
 
@@ -257,4 +289,54 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       }
     }
   }
+
+  // 5. Update archive modal if open
+  if (isArchiveOpen) {
+    renderArchive(state);
+  }
+}
+
+function renderArchive(state: GameState) {
+  const overlay = document.getElementById("archive-overlay");
+  const content = document.getElementById("archive-content");
+  if (!overlay || !content || !state.currentGuestId) return;
+
+  const guest = GuestsDB[state.currentGuestId];
+  const affinity = state.guestAffinity[state.currentGuestId] || 0;
+
+  overlay.style.display = "flex";
+  
+  let archiveHtml = `
+    <div class="archive-title">${guest.name}</div>
+    <div class="archive-subtitle">${guest.title} | 好感度: ${affinity}</div>
+    
+    <div class="affinity-bar-container">
+      <div class="affinity-bar-fill" style="width: ${Math.min(100, affinity)}%"></div>
+    </div>
+    
+    <div class="archive-bio">${guest.bio}</div>
+    
+    <h4 style="color:#ff73a8; margin-bottom:15px; border-bottom:1px solid rgba(255,115,168,0.3);">记忆碎片 MEMORIES</h4>
+  `;
+
+  guest.archives.forEach(entry => {
+    const isUnlocked = affinity >= entry.threshold;
+    if (isUnlocked) {
+      archiveHtml += `
+        <div class="archive-entry unlocked">
+          <div class="archive-entry-title">>> ${entry.title}</div>
+          <div class="archive-entry-content">${entry.content}</div>
+        </div>
+      `;
+    } else {
+      archiveHtml += `
+        <div class="archive-entry locked">
+          <div class="archive-entry-title">>> [锁定]</div>
+          <div class="archive-entry-content">需要好感度达到 ${entry.threshold} 以解锁...</div>
+        </div>
+      `;
+    }
+  });
+
+  content.innerHTML = archiveHtml;
 }

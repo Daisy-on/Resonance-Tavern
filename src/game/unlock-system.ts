@@ -7,6 +7,7 @@ const BASE_UNLOCKS = [
   "simple_syrup",
   "lemon_juice",
   "soda_water",
+  "tonic_essence",
   "ice_cube",
   "stir_tool",
 ];

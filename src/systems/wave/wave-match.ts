@@ -1,5 +1,5 @@
 import type { DrinkState } from "../mixology/drink-state";
-import { drinkStateToWaveParams, generateWave, type WaveParams } from "./wave-generator";
+import { drinkStateToWaveParams, generateWave, quantizeWaveParams, type WaveParams } from "./wave-generator";
 import type { OrderTemplate } from "../../content/orders";
 import type { ScoreBreakdown } from "../../game/game-state";
 import { clamp } from "../../utils/clamp";
@@ -31,10 +31,9 @@ function calcShiftedMse(targetWave: number[], currentWave: number[], shift: numb
 }
 
 function getPhaseToleranceSamples(order: OrderTemplate, waveLength: number): number {
-  if (order.difficulty >= 5) return Math.round(waveLength * 0.02);
-  if (order.difficulty >= 4) return Math.round(waveLength * 0.03);
-  if (order.difficulty >= 3) return Math.round(waveLength * 0.04);
-  return Math.round(waveLength * 0.06);
+  // Full-length search to guarantee "can align if physically reachable".
+  // We keep penalty via shift cost instead of forbidding alignment.
+  return Math.round(waveLength * 0.5);
 }
 
 function getBestShiftMse(targetWave: number[], currentWave: number[], maxShift: number): { mse: number; shift: number } {
@@ -58,36 +57,43 @@ function buildTextureValue(params: WaveParams): number {
   return params.noise * 0.6 + params.decay * 0.4 + params.harmonics * 0.8;
 }
 
+function circularPhaseDiff(a: number, b: number): number {
+  const tau = Math.PI * 2;
+  let diff = Math.abs(a - b) % tau;
+  if (diff > Math.PI) diff = tau - diff;
+  return diff;
+}
+
 export function calcAdvancedScoreWithBreakdown(
   drink: DrinkState,
   order: OrderTemplate,
 ): { finalScore: number; breakdown: ScoreBreakdown; bestShift: number } {
-  const targetParams = order.targetParams;
-  const currentParams = drinkStateToWaveParams(drink);
+  const targetParams = quantizeWaveParams(order.targetParams);
+  const currentParams = quantizeWaveParams(drinkStateToWaveParams(drink));
 
   const targetWave = generateWave(targetParams);
   const currentWave = generateWave(currentParams);
 
   const shiftWindow = getPhaseToleranceSamples(order, targetWave.length);
   const bestShiftResult = getBestShiftMse(targetWave, currentWave, shiftWindow);
-  const shapeScore = clamp(100 - bestShiftResult.mse * 140, 0, 100);
+  const shapeScore = clamp(100 - bestShiftResult.mse * 170, 0, 100);
   const amplitudeScore = calcParamScore(Math.abs(targetParams.amplitude - currentParams.amplitude), 180);
-  const frequencyScore = calcParamScore(Math.abs(targetParams.frequency - currentParams.frequency), 120);
+  const frequencyScore = calcParamScore(Math.abs(targetParams.frequency - currentParams.frequency), 190);
 
   const normalizedShift = shiftWindow > 0 ? Math.abs(bestShiftResult.shift) / shiftWindow : 0;
-  const phaseDiff = Math.abs(targetParams.phase - currentParams.phase);
-  const phaseScore = clamp(100 - phaseDiff * 45 - normalizedShift * 20, 0, 100);
+  const phaseDiff = circularPhaseDiff(targetParams.phase, currentParams.phase);
+  const phaseScore = clamp(100 - phaseDiff * 30 - normalizedShift * 12, 0, 100);
 
   const textureTarget = buildTextureValue(targetParams);
   const textureCurrent = buildTextureValue(currentParams);
   const textureScore = calcParamScore(Math.abs(textureTarget - textureCurrent), 90);
 
   const finalScore =
-    shapeScore * 0.45 +
-    amplitudeScore * 0.15 +
+    shapeScore * 0.62 +
+    amplitudeScore * 0.1 +
     frequencyScore * 0.15 +
-    phaseScore * 0.15 +
-    textureScore * 0.1;
+    phaseScore * 0.08 +
+    textureScore * 0.05;
 
   return {
     finalScore: Math.round(clamp(finalScore, 0, 100)),

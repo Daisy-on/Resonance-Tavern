@@ -66,6 +66,7 @@ export type GameState = {
   guestAffinity: Record<string, number>;
   inventory: string[];
   lastScoreBreakdown: ScoreBreakdown | null;
+  currentDialogue: string | null;
 };
 
 export function createDefaultGameState(): GameState {
@@ -112,9 +113,11 @@ export function createDefaultGameState(): GameState {
       "simple_syrup",
       "lemon_juice",
       "soda_water",
+      "tonic_essence",
       "ice_cube",
       "stir_tool",
     ],
     lastScoreBreakdown: null,
+    currentDialogue: null,
   };
 }
