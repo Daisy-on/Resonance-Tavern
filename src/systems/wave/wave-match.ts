@@ -67,6 +67,7 @@ function circularPhaseDiff(a: number, b: number): number {
 export function calcAdvancedScoreWithBreakdown(
   drink: DrinkState,
   order: OrderTemplate,
+  activeEvent?: string | null
 ): { finalScore: number; breakdown: ScoreBreakdown; bestShift: number } {
   const targetParams = quantizeWaveParams(order.targetParams);
   const currentParams = quantizeWaveParams(drinkStateToWaveParams(drink));
@@ -74,7 +75,11 @@ export function calcAdvancedScoreWithBreakdown(
   const targetWave = generateWave(targetParams);
   const currentWave = generateWave(currentParams);
 
-  const shiftWindow = getPhaseToleranceSamples(order, targetWave.length);
+  let shiftWindow = getPhaseToleranceSamples(order, targetWave.length);
+  if (activeEvent === "rainy_day") {
+    shiftWindow = Math.floor(shiftWindow * 1.5); // More tolerant phase matching on rainy day
+  }
+
   const bestShiftResult = getBestShiftMse(targetWave, currentWave, shiftWindow);
   const shapeScore = clamp(100 - bestShiftResult.mse * 170, 0, 100);
   const amplitudeScore = calcParamScore(Math.abs(targetParams.amplitude - currentParams.amplitude), 180);

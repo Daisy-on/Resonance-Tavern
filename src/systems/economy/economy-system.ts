@@ -24,8 +24,12 @@ export function applyIngredientCost(state: GameState, ingredientId: string): {
   const ingredient = SpiritsDB[ingredientId] ?? AdditivesDB[ingredientId];
   if (!ingredient) return { moneyCost: 0, powerCost: 0 };
 
-  const moneyCost = ingredient.unitCost ?? 0;
-  const powerCost = ingredient.powerCost ?? 0;
+  let moneyCost = ingredient.unitCost ?? 0;
+  let powerCost = ingredient.powerCost ?? 0;
+
+  if (state.activeEvent === "ice_shortage" && ingredientId === "ice_cube") {
+    powerCost *= 2;
+  }
 
   state.resources.money -= moneyCost;
   state.resources.power -= powerCost;
@@ -36,7 +40,8 @@ export function applyIngredientCost(state: GameState, ingredientId: string): {
 }
 
 export function applyOrderIncome(state: GameState, score: number): number {
-  const income = Math.max(0, state.balanceConfig.baseOrderPrice + getScoreBonus(state, score));
+  const basePrice = state.currentOrder?.rewardBase ?? state.balanceConfig.baseOrderPrice;
+  const income = Math.max(0, basePrice + getScoreBonus(state, score));
   state.resources.money += income;
   state.dailyLedger.orderIncomeToday += income;
   state.dailyLedger.ordersToday += 1;
@@ -67,7 +72,15 @@ export function applyDailySettlement(state: GameState): {
   state.resources.money -= rent;
   state.dailyLedger.rentToday = rent;
 
-  const netToday = state.dailyLedger.orderIncomeToday - state.dailyLedger.ingredientCostToday - rent;
+  const MAX_POWER = 24;
+  let powerCost = 0;
+  if (state.resources.power < MAX_POWER) {
+    powerCost = MAX_POWER - state.resources.power;
+    state.resources.money -= powerCost;
+    state.resources.power = MAX_POWER;
+  }
+
+  const netToday = state.dailyLedger.orderIncomeToday - state.dailyLedger.ingredientCostToday - rent - powerCost;
   const isBankrupt = checkGameOver(state);
   return { rent, netToday, isBankrupt };
 }

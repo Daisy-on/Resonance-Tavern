@@ -36,6 +36,9 @@ const DAILY_EVENTS: GameEvent[] = [
 ];
 
 export function pickDailyEvent(state: GameState): GameEvent | null {
+  // Clear previous day's event first
+  state.activeEvent = null;
+
   // 第 1 天不触发事件，作为教学缓冲
   if (state.day <= 1) return null;
   

@@ -173,3 +173,35 @@ canvas {
   background: linear-gradient(90deg, #ff73a8, #73f2ff);
   transition: width 0.5s ease-out;
 }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #actions-panel {
+    bottom: 10px;
+    right: 10px;
+    width: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  #status-panel {
+    top: 10px;
+    left: 10px;
+    min-width: 150px;
+    font-size: 0.8em;
+  }
+  #locked-panel {
+    top: 10px;
+    right: 10px;
+    width: auto;
+    font-size: 0.8em;
+  }
+  #dialogue-panel {
+    width: 90%;
+    bottom: 100px;
+  }
+  .btn {
+    padding: 6px 8px;
+    font-size: 0.8em;
+  }
+}

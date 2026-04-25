@@ -99,7 +99,7 @@ export function createGameLoop(input: GameLoopInput) {
     } else if (action === "submit") {
       // Calculate score
       if (currentState.currentOrder && currentState.drink.baseSpirit) {
-        const scoreResult = calcAdvancedScoreWithBreakdown(currentState.drink, currentState.currentOrder);
+        const scoreResult = calcAdvancedScoreWithBreakdown(currentState.drink, currentState.currentOrder, currentState.activeEvent);
         const rawScore = scoreResult.finalScore;
         // apply penalties
         let finalScore = rawScore;
@@ -142,7 +142,9 @@ export function createGameLoop(input: GameLoopInput) {
       ensureDayUnlocks(currentState);
       audioSystem.init(); // Initialize audio on first interaction
       if (mixAction === "add_ice") audioSystem.playIce();
-      else if (!["stir", "stir_cw", "stir_ccw", "reset"].includes(mixAction)) audioSystem.playPour();
+      else if (["stir", "stir_cw", "stir_ccw"].includes(mixAction)) audioSystem.playStir();
+      else if (mixAction === "shake") audioSystem.playShake();
+      else if (mixAction !== "reset") audioSystem.playPour();
 
       const actionUnlockMap: Partial<Record<MixActionType, string>> = {
         select_vodka: "vodka",
@@ -234,6 +236,8 @@ export function createGameLoop(input: GameLoopInput) {
         stir_ccw: "stir_tool",
         shake: "shake_tool",
         pour_precise: "precision_tool",
+        muddle: "muddle_tool",
+        flame: "flame_tool",
       };
       const unlockId = unlockMap[candidate];
       return !unlockId || isUnlocked(currentState, unlockId);
@@ -277,9 +281,11 @@ export function createGameLoop(input: GameLoopInput) {
     }
 
     // 5. Advanced tools (Row 2)
-    if (isInside(x, y, w - 380, propY + 80, 200, 100)) {
+    if (isInside(x, y, w - 380, propY + 80, 380, 100)) {
       if (x < w - 290) currentState.draggedItem = canDragAction("shake") ? "shake" : null;
-      else currentState.draggedItem = canDragAction("pour_precise") ? "pour_precise" : null;
+      else if (x < w - 200) currentState.draggedItem = canDragAction("pour_precise") ? "pour_precise" : null;
+      else if (x < w - 110) currentState.draggedItem = canDragAction("muddle") ? "muddle" : null;
+      else currentState.draggedItem = canDragAction("flame") ? "flame" : null;
       return;
     }
   };

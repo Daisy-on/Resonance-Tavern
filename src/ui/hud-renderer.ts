@@ -49,11 +49,11 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       <div id="dialogue-panel" class="panel" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom: 1px solid rgba(255,115,168,0.3);">
           <div id="guest-name" style="font-weight:bold; color:#ff73a8;"></div>
-          <button class="btn" id="btn-profile" style="font-size:0.7em; padding:2px 8px;">档案 PROFILE</button>
         </div>
         <div id="guest-dialogue" style="font-size:1.1em; line-height:1.4; min-height: 3em;"></div>
         <button class="btn" id="btn-next" style="margin-top:10px;">接受订单</button>
       </div>
+      <button id="btn-profile" class="btn" style="position: absolute; top: 30px; right: 280px; z-index: 100; pointer-events: auto;">档案室</button>
       <div id="result-panel" class="panel" style="display:none; min-width:320px; text-align:center;">
         <h2 id="result-title" style="margin-top:0; color:#73f2ff;"></h2>
         <div id="result-score" style="margin:20px 0;"></div>
@@ -68,18 +68,23 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       </div>
     `;
 
-    uiLayer.addEventListener("click", (e) => {
+    document.addEventListener("click", (e) => {
       const target = e.target as HTMLElement;
       if (!lastState) return;
 
-      if (target.matches(".btn[data-action]")) {
-        const action = target.getAttribute("data-action");
+      // Handle buttons with data-action
+      const actionBtn = target.closest(".btn[data-action]");
+      if (actionBtn) {
+        const action = actionBtn.getAttribute("data-action");
         dispatch(action);
+        return;
       }
-      if (target.id === "btn-next") {
+
+      // Handle specific IDs
+      if (target.id === "btn-next" || target.closest("#btn-next")) {
         dispatch("take_order");
       }
-      if (target.id === "btn-profile") {
+      if (target.id === "btn-profile" || target.closest("#btn-profile")) {
         isArchiveOpen = true;
         renderArchive(lastState);
       }
@@ -88,7 +93,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         const overlay = document.getElementById("archive-overlay");
         if (overlay) overlay.style.display = "none";
       }
-      if (target.id === "btn-result-next") {
+      if (target.id === "btn-result-next" || target.closest("#btn-result-next")) {
         const flow = lastState.orderFlow;
         if (flow === "idle") dispatch("next_guest");
         else if (flow === "result") dispatch("next_guest");
@@ -124,9 +129,14 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
   }
 
   // 1.5 Update Locked Panel
+  const lockedPanel = document.getElementById("locked-panel");
   const lockedList = document.getElementById("locked-list");
-  if (lockedList) {
-    const allUnlockables = [
+  if (lockedPanel && lockedList) {
+    const isMixingView = state.orderFlow === "mixing_view";
+    lockedPanel.style.display = isMixingView ? "none" : "block";
+
+    if (!isMixingView) {
+      const allUnlockables = [
       { id: "rum", name: "朗姆酒 (Day 4)", day: 4 },
       { id: "bitters", name: "苦精 (Day 7)", day: 7 },
       { id: "shake_tool", name: "摇壶 (Day 7)", day: 7 },
@@ -142,6 +152,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         .join("");
     } else {
       lockedList.innerHTML = "<div style='color:#73f2ff;'>全部物品已解锁</div>";
+      }
     }
   }
 
@@ -290,53 +301,69 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     }
   }
 
-  // 5. Update archive modal if open
-  if (isArchiveOpen) {
-    renderArchive(state);
+  // 5. Update archive modal visibility and content
+  const overlay = document.getElementById("archive-overlay");
+  if (overlay) {
+    if (isArchiveOpen) {
+      overlay.style.display = "flex";
+      renderArchive(state);
+    } else {
+      overlay.style.display = "none";
+    }
   }
 }
 
 function renderArchive(state: GameState) {
-  const overlay = document.getElementById("archive-overlay");
   const content = document.getElementById("archive-content");
-  if (!overlay || !content || !state.currentGuestId) return;
+  if (!content) return;
 
-  const guest = GuestsDB[state.currentGuestId];
-  const affinity = state.guestAffinity[state.currentGuestId] || 0;
+  const archiveHtml = `
+    <h2 class="archive-title" style="margin-bottom: 20px; text-align: center;">酒吧档案室 (GUEST ARCHIVES)</h2>
+    ${Object.values(GuestsDB).map(guest => {
+      const affinity = state.guestAffinity[guest.id] || 0;
+      const isMet = (state.guestAffinity[guest.id] !== undefined) || state.currentGuestId === guest.id;
+      
+      if (!isMet) {
+        return `
+          <div style="border: 1px solid #333; padding: 15px; margin-bottom: 20px; background: rgba(0,0,0,0.5);">
+            <div style="color: #666; font-size: 1.2em; font-style: italic;">[未接触的客人]</div>
+          </div>
+        `;
+      }
 
-  overlay.style.display = "flex";
-  
-  let archiveHtml = `
-    <div class="archive-title">${guest.name}</div>
-    <div class="archive-subtitle">${guest.title} | 好感度: ${affinity}</div>
-    
-    <div class="affinity-bar-container">
-      <div class="affinity-bar-fill" style="width: ${Math.min(100, affinity)}%"></div>
-    </div>
-    
-    <div class="archive-bio">${guest.bio}</div>
-    
-    <h4 style="color:#ff73a8; margin-bottom:15px; border-bottom:1px solid rgba(255,115,168,0.3);">记忆碎片 MEMORIES</h4>
+      const memoryFragments = guest.archives.map(entry => {
+        const isUnlocked = affinity >= entry.threshold;
+        if (isUnlocked) {
+          return `
+            <div class="archive-entry unlocked" style="margin-bottom: 10px; padding: 10px; border-left: 4px solid #73f2ff; background: rgba(115, 242, 255, 0.05);">
+              <div class="archive-entry-title" style="color: #73f2ff; font-weight: bold; margin-bottom: 5px;">>> ${entry.title}</div>
+              <div class="archive-entry-content" style="color: #ddd;">${entry.content}</div>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="archive-entry locked" style="margin-bottom: 10px; padding: 10px; border-left: 4px solid #555; background: rgba(255, 255, 255, 0.05); opacity: 0.6;">
+              <div class="archive-entry-title" style="color: #999; font-style: italic;">>> [锁定]</div>
+              <div class="archive-entry-content" style="color: #777;">需要好感度达到 ${entry.threshold} 以解锁...</div>
+            </div>
+          `;
+        }
+      }).join('');
+
+      return `
+        <div style="border: 1px solid #73f2ff; padding: 15px; margin-bottom: 30px; background: rgba(20,20,30,0.8);">
+          <div style="font-size: 1.5em; color: #ff73a8; font-weight: bold;">${guest.name} <span style="font-size: 0.6em; color: #73f2ff; font-weight: normal;">| ${guest.title}</span></div>
+          <div style="color: #ccc; margin: 10px 0;">${guest.bio}</div>
+          <div style="margin-bottom: 5px;">好感度: ${affinity}/100</div>
+          <div class="affinity-bar-container">
+            <div class="affinity-bar-fill" style="width: ${Math.min(100, Math.max(0, affinity))}%"></div>
+          </div>
+          <h4 style="color:#ff73a8; margin: 15px 0 10px; border-bottom:1px solid rgba(255,115,168,0.3);">记忆碎片 MEMORIES</h4>
+          ${memoryFragments}
+        </div>
+      `;
+    }).join('')}
   `;
-
-  guest.archives.forEach(entry => {
-    const isUnlocked = affinity >= entry.threshold;
-    if (isUnlocked) {
-      archiveHtml += `
-        <div class="archive-entry unlocked">
-          <div class="archive-entry-title">>> ${entry.title}</div>
-          <div class="archive-entry-content">${entry.content}</div>
-        </div>
-      `;
-    } else {
-      archiveHtml += `
-        <div class="archive-entry locked">
-          <div class="archive-entry-title">>> [锁定]</div>
-          <div class="archive-entry-content">需要好感度达到 ${entry.threshold} 以解锁...</div>
-        </div>
-      `;
-    }
-  });
 
   content.innerHTML = archiveHtml;
 }

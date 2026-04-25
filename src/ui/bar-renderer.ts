@@ -1,6 +1,7 @@
 import type { GameState } from "../game/game-state";
 import { generateWave, drinkStateToWaveParams } from "../systems/wave/wave-generator";
 import { NPC_SPRITES, COLOR_MAP, PROP_SPRITES } from "./pixel-assets";
+import { getEventDescription } from "../systems/event/event-system";
 
 export function renderBar(ctx: CanvasRenderingContext2D, width: number, height: number, state: GameState) {
   // Clear screen
@@ -116,6 +117,24 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   const waveAreaX = (w - waveAreaWidth) / 2;
   const waveAreaHeight = 320; // Taller to prevent overflow
   const waveAreaY = (h - waveAreaHeight) / 2 - 80; // Centered in viewport, slightly offset up for table
+
+  // Show order requirements
+  if (state.currentOrder) {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.font = "italic 16px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(`“${state.currentOrder.moodText}”`, w / 2, waveAreaY - 20);
+    ctx.textAlign = "left";
+  }
+
+  // Show event if active
+  if (state.activeEvent) {
+    ctx.fillStyle = "#ff2d7d";
+    ctx.font = "bold 14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(getEventDescription(state.activeEvent), w / 2, waveAreaY - 45);
+    ctx.textAlign = "left";
+  }
 
   drawOscilloscope(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight);
   if (state.currentOrder) {
@@ -254,6 +273,22 @@ function drawAdvancedTools(ctx: CanvasRenderingContext2D, x: number, y: number, 
   if (!state.inventory.includes("precision_tool")) {
     drawLockedOverlay(ctx, x + 90, y, 56, 56);
   }
+
+  // Placeholder for muddle_tool
+  drawPixelSprite(ctx, x + 180, y, 56, PROP_SPRITES["shaker"]); // Use shaker as placeholder
+  ctx.fillStyle = "#fff";
+  ctx.fillText("压碎棒", x + 170, y - 8);
+  if (!state.inventory.includes("muddle_tool")) {
+    drawLockedOverlay(ctx, x + 180, y, 56, 56);
+  }
+
+  // Placeholder for flame_tool
+  drawPixelSprite(ctx, x + 270, y, 56, PROP_SPRITES["shaker"]); // Use shaker as placeholder
+  ctx.fillStyle = "#fff";
+  ctx.fillText("喷枪", x + 265, y - 8);
+  if (!state.inventory.includes("flame_tool")) {
+    drawLockedOverlay(ctx, x + 270, y, 56, 56);
+  }
 }
 
 function drawDraggedPreview(ctx: CanvasRenderingContext2D, x: number, y: number, item: string) {
@@ -329,6 +364,14 @@ function drawDraggedPreview(ctx: CanvasRenderingContext2D, x: number, y: number,
     drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["dropper"]);
     ctx.fillStyle = "#fff";
     ctx.fillText("精准注入", -26, 30);
+  } else if (item === "muddle") {
+    drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["shaker"]);
+    ctx.fillStyle = "#fff";
+    ctx.fillText("压碎棒", -16, 30);
+  } else if (item === "flame") {
+    drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["shaker"]);
+    ctx.fillStyle = "#fff";
+    ctx.fillText("喷枪", -10, 30);
   }
 
   ctx.restore();
@@ -572,11 +615,12 @@ export function drawPixelCup(ctx: CanvasRenderingContext2D, x: number, y: number
 
   // 1. Draw Liquid (Inside Trapezoid)
   if (drink.volume > 0) {
-    const liquidHeight = (drink.volume / 100) * (height - 10);
+    const renderVolume = Math.min(drink.volume, 200);
+    const liquidHeight = (renderVolume / 200) * (height - 10);
     const liquidTopY = -liquidHeight;
 
     // Calculate liquid top width based on taper
-    const liquidTopWidth = bottomWidth + (topWidth - bottomWidth) * (drink.volume / 100);
+    const liquidTopWidth = bottomWidth + (topWidth - bottomWidth) * (renderVolume / 200);
     const halfLiquidTop = liquidTopWidth / 2;
 
     ctx.fillStyle = drink.color || "rgba(255, 255, 255, 0.2)";

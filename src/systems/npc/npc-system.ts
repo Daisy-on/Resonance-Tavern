@@ -40,8 +40,8 @@ export function generateNextGuest(state: GameState) {
       : OrdersDB.filter((o) => o.difficulty >= minDifficulty && o.difficulty <= maxDifficulty);
   const baseOrder = pool[Math.floor(Math.random() * pool.length)];
     
-  // Add some dynamic fluctuation based on day
-  const fluctuation = Math.min(0.18, state.day * 0.018);
+  // Add dynamic fluctuation based on order variance
+  const fluctuation = baseOrder.allowVariance || 0;
   const applyFluctuation = (val: number, min = 0, max = Number.POSITIVE_INFINITY) => {
     const sign = Math.random() > 0.5 ? 1 : -1;
     return Math.min(max, Math.max(min, val + (val * fluctuation * sign)));

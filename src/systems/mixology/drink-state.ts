@@ -44,7 +44,7 @@ export function createEmptyDrinkState(): DrinkState {
     aroma: 0,
     phaseOffset: 0,
     volume: 0,
-    maxVolume: 300,
+    maxVolume: 200,
     actions: [],
   };
 }
