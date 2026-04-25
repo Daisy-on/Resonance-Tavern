@@ -1,9 +1,12 @@
 ﻿import type { MixAction } from "./mix-actions";
+import type { IngredientData } from "../../content/spirits";
 
 export type DrinkState = {
-  baseSpirit: "vodka" | "gin" | "whisky" | null;
+  baseSpirit: string | null;
+  baseWaveShape: "sine" | "triangle" | "square" | null;
   strength: number;
   sweetness: number;
+  acidity: number;
   temperature: number;
   sparkle: number;
   volume: number;
@@ -13,9 +16,11 @@ export type DrinkState = {
 export function createEmptyDrinkState(): DrinkState {
   return {
     baseSpirit: null,
+    baseWaveShape: null,
     strength: 0,
     sweetness: 0,
-    temperature: 50,
+    acidity: 0,
+    temperature: 20, // 初始常温
     sparkle: 0,
     volume: 0,
     actions: [],

@@ -1,24 +1,81 @@
-﻿* {
+* {
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
   margin: 0;
   width: 100%;
   height: 100%;
   background: #0a0a0f;
   color: #d9f3ff;
-  font-family: Inter, Segoe UI, system-ui, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
 }
 
 #app {
+  position: relative;
   width: 100%;
   height: 100%;
 }
 
 canvas {
   display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  z-index: 1;
 }
+
+#ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none; /* Let clicks pass through to canvas if not on a panel */
+}
+
+.panel {
+  position: absolute;
+  pointer-events: auto; /* Allow UI interactions on panels */
+  background: rgba(10, 10, 20, 0.9);
+  border: 2px solid #73f2ff;
+  border-radius: 0; /* Square corners for pixel feel */
+  padding: 16px;
+  box-shadow: 4px 4px 0px rgba(115, 242, 255, 0.3), inset 0 0 15px rgba(115, 242, 255, 0.1);
+}
+
+.btn {
+  background: transparent;
+  color: #73f2ff;
+  border: 1px solid #73f2ff;
+  padding: 8px 12px;
+  margin: 4px;
+  cursor: pointer;
+  transition: all 0.1s;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.btn:hover {
+  background: #73f2ff;
+  color: #0a0a0f;
+  box-shadow: 0 0 10px #73f2ff;
+}
+.btn:active {
+  transform: translate(2px, 2px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: transparent;
+  color: #73f2ff;
+}
+
+#dialogue-panel { bottom: 30px; left: 50%; transform: translateX(-50%); width: 50%; min-height: 120px; border-left: 8px solid #ff73a8; }
+#actions-panel { bottom: 30px; right: 30px; width: 320px; }
+#status-panel { top: 30px; left: 30px; min-width: 220px; border-top: 4px solid #73f2ff; }
+#result-panel { top: 50%; left: 50%; transform: translate(-50%, -50%); }
