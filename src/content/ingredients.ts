@@ -17,7 +17,7 @@ export const AdditivesDB: Record<string, IngredientData> = {
     id: "soda_water", name: "苏打水", type: "mixer",
     unitCost: 3, powerCost: 0,
     strength: 0, sweetness: 0, acidity: 0, temperature: 0, sparkle: +40, volume: 0,
-    description: "只增加波形毛刺（高频噪声）。"
+    description: "严格仅增加波形毛刺（高频噪声）。"
   },
   "tonic_essence": {
     id: "tonic_essence", name: "捣拌棒", type: "mixer",

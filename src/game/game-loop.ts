@@ -255,17 +255,19 @@ export function createGameLoop(input: GameLoopInput) {
     }
 
     // 3. Additives (Right) - Row 1
-    if (isInside(x, y, w - 620, propY - 40, 520, 100)) {
-      if (x < w - 400) currentState.draggedItem = canDragAction("add_syrup") ? "add_syrup" : null;
-      else if (x < w - 300) currentState.draggedItem = canDragAction("add_lemon") ? "add_lemon" : null;
-      else if (x < w - 210) currentState.draggedItem = canDragAction("add_soda") ? "add_soda" : null;
-      else if (x < w - 120) currentState.draggedItem = canDragAction("add_tonic") ? "add_tonic" : null;
+    // Matches drawAdditivesSet(ctx, w - 620, propY - 20, state)
+    if (isInside(x, y, w - 620, propY - 30, 520, 120)) {
+      if (x < w - 500) currentState.draggedItem = canDragAction("add_syrup") ? "add_syrup" : null;
+      else if (x < w - 380) currentState.draggedItem = canDragAction("add_lemon") ? "add_lemon" : null;
+      else if (x < w - 280) currentState.draggedItem = canDragAction("add_soda") ? "add_soda" : null;
+      else if (x < w - 180) currentState.draggedItem = canDragAction("add_tonic") ? "add_tonic" : null;
       else currentState.draggedItem = canDragAction("add_bitters") ? "add_bitters" : null;
       return;
     }
 
     // 4. Stir Tools (CW / CCW)
-    if (isInside(x, y, w / 2 + 70, propY + 40, 180, 80)) {
+    // Matches drawStirTools(ctx, w / 2 + 70, propY + 60, state)
+    if (isInside(x, y, w / 2 + 70, propY + 50, 200, 100)) {
       if (x < w / 2 + 160) {
         currentState.draggedItem = canDragAction("stir_cw") ? "stir_cw" : null;
       } else {

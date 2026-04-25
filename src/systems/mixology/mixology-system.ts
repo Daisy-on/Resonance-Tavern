@@ -6,7 +6,8 @@ import { AdditivesDB } from "../../content/ingredients";
 import type { MixActionType } from "./mix-actions";
 import { clamp } from "../../utils/clamp";
 
-const PHASE_STEP = Math.PI / 16;
+// Aligned with PHASE_STEPS (16) in wave-generator.ts: (2 * PI) / (16 - 1)
+const PHASE_STEP = (Math.PI * 2) / 15;
 
 const ACTION_INGREDIENT_MAP: Partial<Record<MixActionType, string>> = {
   select_vodka: "vodka",

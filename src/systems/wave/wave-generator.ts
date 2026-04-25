@@ -69,7 +69,9 @@ export function generateWave(params: WaveParams, sampleCount = 128): number[] {
 
     // Keep period stable while expressing acidity via cycle-local asymmetry.
     const asymmetry = Math.max(-0.35, Math.min(0.35, (1 - q.symmetry) * 0.55));
-    const asymSkew = 1 + asymmetry * Math.sin(phase);
+    // Use local phase (without q.phase) to ensure distortion stays relative to shape, not screen.
+    const localPhase = t * TAU * q.frequency;
+    const asymSkew = 1 + asymmetry * Math.sin(localPhase);
     base *= asymSkew;
 
     base *= q.amplitude;
