@@ -190,14 +190,14 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
     // Small dark glow background for text
     ctx.shadowColor = "rgba(0,0,0,0.8)";
     ctx.shadowBlur = 4;
-    
+
     ctx.fillStyle = "rgba(115, 242, 255, 0.9)";
     ctx.font = "bold 13px 'Courier New', monospace";
     ctx.textAlign = "right";
-    
+
     ctx.fillText(`振幅:${d.amplitude} 周期:${d.periodLevel} 相位:${d.phaseStep}`, textX, textY);
     ctx.fillText(`边缘:${d.edgeSharpness} 毛刺:${d.noiseLevel} 谐波:${d.harmonics} 拖尾:${d.decay}`, textX, textY + 18);
-    
+
     ctx.restore();
   }
 
@@ -233,29 +233,44 @@ function drawPixelSprite(ctx: CanvasRenderingContext2D, x: number, y: number, wi
 }
 
 function drawSpiritsSet(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
-  // Vodka - Increased size to 80
-  drawPixelSprite(ctx, x, y, 80, PROP_SPRITES["vodka_bottle"]);
-  ctx.fillStyle = "#fff";
+  const shelfY = y + 80; // The bottom line where bottles sit
+  ctx.save();
+  ctx.textAlign = "center";
   ctx.font = "bold 14px Arial";
-  ctx.fillText("伏特加", x + 15, y - 10);
-
-  // Gin - Increased size to 80
-  drawPixelSprite(ctx, x + 120, y, 80, PROP_SPRITES["gin_bottle"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("金酒", x + 145, y - 10);
 
-  // Whisky - Increased size to 95 and taller
-  drawPixelSprite(ctx, x + 240, y - 15, 95, PROP_SPRITES["whisky_bottle"]);
-  ctx.fillStyle = "#fff";
-  ctx.fillText("威士忌", x + 265, y - 25);
+  // 1. Vodka (Original Style)
+  const vWidth = 80;
+  const vData = PROP_SPRITES["vodka_bottle"];
+  const vHeight = (vData.length / vData[0].length) * vWidth;
+  drawPixelSprite(ctx, x, shelfY - vHeight, vWidth, vData);
+  ctx.fillText("伏特加", x + vWidth / 2, shelfY + 20);
 
-  // Rum - Increased size to 95 and taller
-  drawPixelSprite(ctx, x + 360, y - 15, 95, PROP_SPRITES["rum_bottle"]);
-  ctx.fillStyle = "#fff";
-  ctx.fillText("朗姆", x + 395, y - 25);
+  // 2. Gin (Shrink down to slightly larger than vodka)
+  const gWidth = 84;
+  const gData = PROP_SPRITES["gin_bottle"];
+  const gHeight = (gData.length / gData[0].length) * gWidth;
+  drawPixelSprite(ctx, x + 120, shelfY - gHeight, gWidth, gData);
+  ctx.fillText("金酒", x + 120 + gWidth / 2, shelfY + 20);
+
+  // 3. Whisky (Taller body, lighter brown)
+  const wWidth = 80;
+  const wData = PROP_SPRITES["whisky_bottle"];
+  const wHeight = (wData.length / wData[0].length) * wWidth;
+  drawPixelSprite(ctx, x + 240, shelfY - wHeight, wWidth, wData);
+  ctx.fillText("威士忌", x + 240 + wWidth / 2, shelfY + 20);
+
+  // 4. Rum (Larger overall, narrow width)
+  const rWidth = 72;
+  const rData = PROP_SPRITES["rum_bottle"];
+  const rHeight = (rData.length / rData[0].length) * rWidth;
+  drawPixelSprite(ctx, x + 370, shelfY - rHeight, rWidth, rData);
+  ctx.fillText("朗姆酒", x + 370 + rWidth / 2, shelfY + 20);
+
   if (!state.inventory.includes("rum")) {
-    drawLockedOverlay(ctx, x + 360, y - 15, 95, 95);
+    drawLockedOverlay(ctx, x + 370, shelfY - rHeight, rWidth, rHeight);
   }
+  ctx.restore();
 }
 
 function drawIceBox(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -298,24 +313,24 @@ function drawAdditivesSet(ctx: CanvasRenderingContext2D, x: number, y: number, s
 function drawStirTools(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
   ctx.strokeStyle = "#888";
   ctx.lineWidth = 4;
-  
+
   // 顺搅 (CW) - Vertical stick
   ctx.beginPath();
   ctx.moveTo(x + 30, y);
   ctx.lineTo(x + 30, y + 60);
   ctx.stroke();
-  
+
   // 逆搅 (CCW) - Vertical stick
   ctx.beginPath();
   ctx.moveTo(x + 110, y);
   ctx.lineTo(x + 110, y + 60);
   ctx.stroke();
-  
+
   ctx.fillStyle = "#fff";
   ctx.font = "bold 14px Arial";
   ctx.fillText("顺搅", x + 15, y + 80);
   ctx.fillText("逆搅", x + 95, y + 80);
-  
+
   if (!state.inventory.includes("stir_tool")) {
     drawLockedOverlay(ctx, x, y - 10, 160, 100);
   }
@@ -340,7 +355,7 @@ function drawAdvancedTools(ctx: CanvasRenderingContext2D, x: number, y: number, 
   }
 
   // Flame Tool - Aligned with row above
-  drawPixelSprite(ctx, x + 200, y, 56, PROP_SPRITES["shaker"]); // Use shaker as placeholder
+  drawPixelSprite(ctx, x + 200, y, 56, PROP_SPRITES["flame_tool"]);
   ctx.fillStyle = "#fff";
   ctx.fillText("喷枪", x + 210, y - 10);
   if (!state.inventory.includes("flame_tool")) {
@@ -422,7 +437,7 @@ function drawDraggedPreview(ctx: CanvasRenderingContext2D, x: number, y: number,
     ctx.fillStyle = "#fff";
     ctx.fillText("量杯", -10, 30);
   } else if (item === "flame") {
-    drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["shaker"]);
+    drawPixelSprite(ctx, -24, -24, 48, PROP_SPRITES["flame_tool"]);
     ctx.fillStyle = "#fff";
     ctx.fillText("喷枪", -10, 30);
   }
