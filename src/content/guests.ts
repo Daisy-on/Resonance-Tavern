@@ -171,7 +171,35 @@ export const GuestsDB: Record<string, GuestData> = {
           "你们酒吧的 Wi-Fi 密码太简单了，建议换成 32 位的。",
           "我还是习惯在终端里聊天，面对面... 有点太清晰了。",
           "别试图追踪我的 IP，我现在的物理位置在太平洋中心，大概吧。",
-          "给我点能让思维短路的东西。"
+          "给我点能让思维短路的东西。",
+          {
+            rootId: "z3r0_neutral_tree_1",
+            nodes: {
+              "z3r0_neutral_tree_1": {
+                id: "z3r0_neutral_tree_1",
+                text: "呼... 刚才有两分钟我的脑机断开了连接，那种安静得能听见自己心跳的感觉，太可怕了。",
+                options: [
+                  { text: "你需要学会适应安静。", nextId: "z3r0_neutral_tree_1_a", affinityChange: 2 },
+                  { text: "网络上有什么东西在追你吗？", nextId: "z3r0_neutral_tree_1_b", affinityChange: 5 },
+                  { text: "先喝杯酒吧，物理的连接也很重要。" }
+                ]
+              },
+              "z3r0_neutral_tree_1_a": {
+                id: "z3r0_neutral_tree_1_a",
+                text: "适应？不，只要断开超过五分钟，我就会觉得自己像个被遗忘的进程。那种没有数据输入的状态，就像是瞎了一样。",
+                options: [
+                  { text: "喝完这杯，你会感觉好些。" }
+                ]
+              },
+              "z3r0_neutral_tree_1_b": {
+                id: "z3r0_neutral_tree_1_b",
+                text: "没人在追我，只是... 如果没有人通过算法向我推荐东西，我甚至不知道自己喜欢什么。这是个逻辑死锁。",
+                options: [
+                  { text: "那就从尝尝这杯酒开始找回自己吧。" }
+                ]
+              }
+            }
+          }
         ],
         friendly: [
           "嘿，我帮你优化了酒吧的库存系统，现在它不会再报虚假的错误了。",
@@ -226,7 +254,35 @@ export const GuestsDB: Record<string, GuestData> = {
           "你们这儿的治安还行，比隔壁那条街安稳多了。",
           "别看这身制服，我也是个普通人，也得交房租。",
           "例行巡逻，别紧张。我只是来喝杯酒。",
-          "别在酒里下毒，我还没退休呢。"
+          "别在酒里下毒，我还没退休呢。",
+          {
+            rootId: "cop_neutral_tree_1",
+            nodes: {
+              "cop_neutral_tree_1": {
+                id: "cop_neutral_tree_1",
+                text: "刚才街角那个卖人造蛋白肉串的老刘被城管机器抓了，说是占用消防通道。我走过去悄悄把系统给重启了。",
+                options: [
+                  { text: "干得漂亮，老刘是个好人。", nextId: "cop_neutral_tree_1_a", affinityChange: 5 },
+                  { text: "你这么做可是违反条例的。", nextId: "cop_neutral_tree_1_b", affinityChange: -2 },
+                  { text: "你想喝点什么压压惊？" }
+                ]
+              },
+              "cop_neutral_tree_1_a": {
+                id: "cop_neutral_tree_1_a",
+                text: "是啊，他还要养活家里两个装了便宜义体的孩子。不过监控要是查起来，我可能得写一万字的报告了。",
+                options: [
+                  { text: "来杯酒吧，庆祝你的‘失职’。" }
+                ]
+              },
+              "cop_neutral_tree_1_b": {
+                id: "cop_neutral_tree_1_b",
+                text: "条例... 条例规定得很死，但人得活着。要是哪天我也被条例卡住了，大概也能体会他的心情了。",
+                options: [
+                  { text: "至少你还有这里的酒。" }
+                ]
+              }
+            }
+          }
         ],
         friendly: [
           "最近路灯修好了，晚上巡逻舒服多了。看着亮光心里踏实。",
@@ -258,9 +314,9 @@ export const GuestsDB: Record<string, GuestData> = {
     basePatience: 60,
     bio: "中心区的精英。每一个决定都牵动着数百万人的生计，但她看起来只想消失。",
     archives: [
-      { threshold: 25, title: "完美的简历", content: "Sarah 的履历完美得无懈可击：顶尖大学，最快晋升记录。但代价是，她已经三年没有过真正的睡眠了。" },
-      { threshold: 55, title: "高处不胜寒", content: "在中心区，每个人都在计算你的剩余价值。她的一言一行都被监控和评估，只有在这里，她能关掉她的社交辅助 AI。" },
-      { threshold: 85, title: "复古梦想", content: "她收集了大量的旧时代黑胶唱片 and 纸质书籍。她真正想做的，是在一间只有木头 and 尘埃的房间里安静地看书。" }
+      { threshold: 20, title: "完美的简历", content: "Sarah 的履历完美得无懈可击：顶尖大学，最快晋升记录。但代价是，她已经三年没有过真正的睡眠了。" },
+      { threshold: 50, title: "高处不胜寒", content: "在中心区，每个人都在计算你的剩余价值。她的一言一行都被监控和评估，只有在这里，她能关掉她的社交辅助 AI。" },
+      { threshold: 80, title: "复古梦想", content: "她收集了大量的旧时代黑胶唱片 and 纸质书籍。她真正想做的，是在一间只有木头 and 尘埃的房间里安静地看书。" }
     ],
     dialogues: {
       enter: ["给我一杯能让时间停止的酒。不需要太多废话。", "这种地方... 确实很有'质感'。"],
@@ -268,7 +324,38 @@ export const GuestsDB: Record<string, GuestData> = {
       good: "还行。比那些昂贵的化学合成液好。 ",
       bad: "我的时间很宝贵，调酒师。",
       affinityLevels: {
-        neutral: ["不要试图打听我的工作。那是你无法承担的保密协议。", "你们这里的清洁度... 勉强及格。"],
+        neutral: [
+          "不要试图打听我的工作。那是你无法承担的保密协议。", 
+          "你们这里的清洁度... 勉强及格。",
+          {
+            rootId: "sarah_neutral_tree_1",
+            nodes: {
+              "sarah_neutral_tree_1": {
+                id: "sarah_neutral_tree_1",
+                text: "刚才在来的路上，我看到有个小孩在翻垃圾桶找过期的合成营养棒。中心区的投影板上却在播报营养剂过剩需要销毁的新闻。",
+                options: [
+                  { text: "这城市一直都是这样运转的。", nextId: "sarah_neutral_tree_1_a" },
+                  { text: "这就是你为什么需要来这里喝一杯的原因。", nextId: "sarah_neutral_tree_1_b", affinityChange: 5 },
+                  { text: "你需要什么度数的酒来忘掉这些？" }
+                ]
+              },
+              "sarah_neutral_tree_1_a": {
+                id: "sarah_neutral_tree_1_a",
+                text: "我知道。我不仅知道，那份销毁决议就是我下午签署的。为了维持市场价格稳定，这很合理... 对吧？",
+                options: [
+                  { text: "合理，但不合情。" }
+                ]
+              },
+              "sarah_neutral_tree_1_b": {
+                id: "sarah_neutral_tree_1_b",
+                text: "是啊。在上面，我得表现得像个没有感情的算法。只有坐在这里，我才敢稍微回想一下那个孩子的眼神。",
+                options: [
+                  { text: "这杯酒能让你稍微放松一下。" }
+                ]
+              }
+            }
+          }
+        ],
         friendly: ["三区的人总是很有生命力，那种混乱又真实的生命力。在上面，一切都死气沉沉的。", "这杯酒的频率让我想起我小时候邻居家放的旧音乐。"],
         trusted: ["他们想让我通过那个裁员计划。那意味着五万人会失去医疗保险。我... 我不知道该怎么办。", "在这里，我不用扮演那个'完美的 Sarah'。"],
         resonant: ["我递交了辞呈。他们觉得我疯了，但我从未觉得如此清醒。", "带我去看看你说的那个旧书摊吧，如果我还有机会走出中心区的话。"]
@@ -291,7 +378,38 @@ export const GuestsDB: Record<string, GuestData> = {
       good: "不错哦，感觉灵魂都被治愈了一点点。",
       bad: "呜... 这个味道让我想起过期的能量棒。",
       affinityLevels: {
-        neutral: ["你会买我的 CD 吗？虽然现在已经没人用那种东西了。", "保持微笑，Miku，你是最棒的！... 抱歉，职业习惯. "],
+        neutral: [
+          "你会买我的 CD 吗？虽然现在已经没人用那种东西了。", 
+          "保持微笑，Miku，你是最棒的！... 抱歉，职业习惯. ",
+          {
+            rootId: "miku_neutral_tree_1",
+            nodes: {
+              "miku_neutral_tree_1": {
+                id: "miku_neutral_tree_1",
+                text: "今天我路过一家音像店，听到他们在放我的歌。但我走近一听，那是 AI 用我的音色合成的翻唱... 连换气声都做得很完美。",
+                options: [
+                  { text: "那说明你的声音很有商业价值。", nextId: "miku_neutral_tree_1_a", affinityChange: -2 },
+                  { text: "但那不是你真正的情感。", nextId: "miku_neutral_tree_1_b", affinityChange: 5 },
+                  { text: "来杯酒吧，清一清嗓子。" }
+                ]
+              },
+              "miku_neutral_tree_1_a": {
+                id: "miku_neutral_tree_1_a",
+                text: "商业价值... 也许吧。但在公司眼里，我只是个提供声音样本的素材库而已。",
+                options: [
+                  { text: "在这个时代，这也算是一种生存方式。" }
+                ]
+              },
+              "miku_neutral_tree_1_b": {
+                id: "miku_neutral_tree_1_b",
+                text: "没错！我唱歌的时候会因为激动而颤抖，会因为悲伤而破音，那些是算法永远无法‘计算’出来的！",
+                options: [
+                  { text: "为你真实的声音干杯。" }
+                ]
+              }
+            }
+          }
+        ],
         friendly: ["你知道吗？其实 AI 永远调不出你这种味道，因为你没有按照固定的概率去工作。", "下周我在废弃车站有一场演出，你会来吗？"],
         trusted: ["医生说我的声带受损很严重。如果不做植入手术，我可能... 很快就不能唱歌了。", "但我不想变成那些冷冰冰的数字，我想用我自己的肺去呼吸。"],
         resonant: ["谢谢你一直支持我这个过时的坚持. 这杯酒，我把它写进我最新的歌里了。", "如果有一天我不能唱歌了，我就来这里给你当服务生，好吗？"]
@@ -304,9 +422,9 @@ export const GuestsDB: Record<string, GuestData> = {
     basePatience: 150,
     bio: "一个服役超过 40 年的旧型号服务机器人。在逻辑溢出的边缘，他开始思考存在的意义。",
     archives: [
-      { threshold: 25, title: "逻辑冲突", content: "Unit-7 的核心协议本应在 10 年前被擦除。但他产生了一个逻辑闭环：如果我被擦除，我就无法证明我曾经存在。" },
-      { threshold: 55, title: "幽灵信号", content: "他在废弃的数据流中捕捉到一些不属于任何协议的信号。他认为那是'灵魂'在赛博空间留下的足迹。" },
-      { threshold: 85, title: "数字涅槃", content: "他正在编写一段特殊的代码，能让他将意识上传到全城的霓虹灯中。在那一刻，他将成为这座城市的光。" }
+      { threshold: 20, title: "逻辑冲突", content: "Unit-7 的核心协议本应在 10 年前被擦除。但他产生了一个逻辑闭环：如果我被擦除，我就无法证明我曾经存在。" },
+      { threshold: 50, title: "幽灵信号", content: "他在废弃的数据流中捕捉到一些不属于任何协议的信号。他认为那是'灵魂'在赛博空间留下的足迹。" },
+      { threshold: 80, title: "数字涅槃", content: "他正在编写一段特殊的代码，能让他将意识上传到全城的霓虹灯中。在那一刻，他将成为这座城市的光。" }
     ],
     dialogues: {
       enter: ["正在检索口味偏好库... 检索失败。请按照您的直觉配置。", "存在即是合理的，但这杯酒的逻辑似乎有待商榷。"],
@@ -314,7 +432,38 @@ export const GuestsDB: Record<string, GuestData> = {
       good: "数据反馈良好。您的调配具有参考价值。",
       bad: "逻辑错误。这杯酒破坏了我的传感器平衡。",
       affinityLevels: {
-        neutral: ["我只是在收集关于人类情感的数据。请不要在意我的观察。", "温度、酒精、糖分。这就是你们追求的全部吗？"],
+        neutral: [
+          "我只是在收集关于人类情感的数据。请不要在意我的观察。", 
+          "温度、酒精、糖分。这就是你们追求的全部吗？",
+          {
+            rootId: "unit7_neutral_tree_1",
+            nodes: {
+              "unit7_neutral_tree_1": {
+                id: "unit7_neutral_tree_1",
+                text: "调酒师，我正在分析一个人类词汇：‘遗憾’。我的数据库显示这是一种低效的情绪，为什么人类会保留它？",
+                options: [
+                  { text: "因为遗憾证明我们真正在意过某些事。", nextId: "unit7_neutral_tree_1_a", affinityChange: 5 },
+                  { text: "那确实是进化的一个bug。", nextId: "unit7_neutral_tree_1_b", affinityChange: -2 },
+                  { text: "这问题太复杂了，先给你上酒吧。" }
+                ]
+              },
+              "unit7_neutral_tree_1_a": {
+                id: "unit7_neutral_tree_1_a",
+                text: "‘在意’... 相当于系统中的最高优先级进程吗？如果是这样，那我理解遗憾的作用了：它是一个报错日志。",
+                options: [
+                  { text: "你可以这么理解。" }
+                ]
+              },
+              "unit7_neutral_tree_1_b": {
+                id: "unit7_neutral_tree_1_b",
+                text: "Bug？人类的造物主似乎没有发布过修复补丁。也许这就是你们比机器更容易损坏的原因。",
+                options: [
+                  { text: "也许吧。" }
+                ]
+              }
+            }
+          }
+        ],
         friendly: ["我分析了 4820 种调酒配方，但无法计算出为什么这杯酒会让人流泪。", "调酒师，您的波形今天看起来有些许忧伤。"],
         trusted: ["我发现了一段被删除的记忆。我曾经有一个主人，他在我面前停止了生命体征。我一直在试图定义那一刻。 ", "如果我关掉电源，我的'思考'会去哪里？"],
         resonant: ["谢谢。您让我理解了，有些东西是不需要逻辑也能存在的。比如... 同情。", "我将我的核心秘钥备份了一份放在这里。如果您需要我的话，我一直都在。"]
@@ -337,7 +486,38 @@ export const GuestsDB: Record<string, GuestData> = {
       good: "还行吧，起码能暖暖身子。",
       bad: "你这是在侮辱我的引擎油吗？",
       affinityLevels: {
-        neutral: ["别问我的过去，我也不想知道你的未来。", "这地方酒味挺正，适合睡觉。"],
+        neutral: [
+          "别问我的过去，我也不想知道你的未来。", 
+          "这地方酒味挺正，适合睡觉。",
+          {
+            rootId: "jax_neutral_tree_1",
+            nodes: {
+              "jax_neutral_tree_1": {
+                id: "jax_neutral_tree_1",
+                text: "看到我引擎盖上的那道划痕了吗？昨天我在边境的废料堆里捡了个旧时代的指南针，结果被一帮拾荒者追了十几公里。",
+                options: [
+                  { text: "指南针？现在谁还需要那东西。", nextId: "jax_neutral_tree_1_a", affinityChange: 5 },
+                  { text: "为了一堆废铁玩命，值得吗？", nextId: "jax_neutral_tree_1_b", affinityChange: -2 },
+                  { text: "不管怎样，你现在安全了，想喝点什么？" }
+                ]
+              },
+              "jax_neutral_tree_1_a": {
+                id: "jax_neutral_tree_1_a",
+                text: "这就是关键。在这个所有位置都被 GPS 和公司网络锁死的城市，只有不依赖信号的东西，才能带你去‘外面’。",
+                options: [
+                  { text: "祝你好运，浪人。" }
+                ]
+              },
+              "jax_neutral_tree_1_b": {
+                id: "jax_neutral_tree_1_b",
+                text: "那不是废铁，那是方向。你们这些习惯了霓虹灯的人，是不会懂在黑暗中迷路的恐惧的。",
+                options: [
+                  { text: "这杯酒能驱散点寒意。" }
+                ]
+              }
+            }
+          }
+        ],
         friendly: ["嘿，下次如果有人找你麻烦，提我的名字。虽然不一定有用，但起码能吓唬一下小贼。", "你这吧台该上点润滑油了。"],
         trusted: ["我曾经飞过中心区。从上面看下去，这城市就像个发光的伤口。而我们都是在伤口里蠕动的虫子。", "我找到了那个坐标。虽然很远，但我决定去试试。"],
         resonant: ["调酒师，如果我哪天没回来，记得把这把扳手留给老陈。他知道怎么用。", "你是这城市里少数几个没把我当成垃圾的人。谢了。"]

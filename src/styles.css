@@ -75,6 +75,27 @@ canvas {
   color: #73f2ff;
 }
 
+.dialogue-option-btn {
+  width: 100%;
+  text-align: left;
+  background: rgba(26, 15, 30, 0.8);
+  border: 1px solid rgba(115, 242, 255, 0.3);
+  color: #73f2ff;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 300;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-size: 0.95em;
+}
+
+.dialogue-option-btn:hover {
+  background: rgba(115, 242, 255, 0.2);
+  border-color: #73f2ff;
+}
+
 #dialogue-panel { bottom: 30px; left: 50%; transform: translateX(-50%); width: 50%; min-height: 120px; border-left: 8px solid #ff73a8; }
 #actions-panel { bottom: 30px; right: 30px; width: 320px; }
 #status-panel { 

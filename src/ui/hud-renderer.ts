@@ -288,23 +288,30 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         if (state.currentDialogueNode) {
           if (textEl) textEl.textContent = state.currentDialogueNode.text;
           
-          // Render options
+          // Render options only when node changes
           if (optionsContainer) {
-            optionsContainer.innerHTML = "";
-            state.currentDialogueNode.options.forEach((opt, idx) => {
-              const btn = document.createElement("button");
-              btn.className = "dialogue-option-btn w-full text-left bg-[#1a0f1e]/80 border border-[#73f2ff]/30 text-[#73f2ff] py-2 px-4 hover:bg-[#73f2ff]/20 hover:border-[#73f2ff] transition-all cursor-pointer font-light tracking-wide rounded";
-              btn.setAttribute("data-option-index", idx.toString());
-              btn.innerHTML = `<span class="opacity-50 mr-2">></span> ${opt.text}`;
-              optionsContainer.appendChild(btn);
-            });
+            const currentOptionNodeId = state.currentDialogueNode.id;
+            if (optionsContainer.getAttribute("data-current-node") !== currentOptionNodeId) {
+              optionsContainer.innerHTML = "";
+              state.currentDialogueNode.options.forEach((opt, idx) => {
+                const btn = document.createElement("button");
+                btn.className = "dialogue-option-btn";
+                btn.setAttribute("data-option-index", idx.toString());
+                btn.innerHTML = `<span style="opacity:0.5; margin-right:8px;">></span> ${opt.text}`;
+                optionsContainer.appendChild(btn);
+              });
+              optionsContainer.setAttribute("data-current-node", currentOptionNodeId);
+            }
           }
           if (nextBtn) (nextBtn as HTMLElement).style.display = "none";
         } else {
           // Fallback to simple dialogue if no node is present
           const fallbackLine = state.currentDialogue || guest?.dialogues.enter?.[0] || "...";
           if (textEl) textEl.textContent = fallbackLine;
-          if (optionsContainer) optionsContainer.innerHTML = "";
+          if (optionsContainer) {
+            optionsContainer.innerHTML = "";
+            optionsContainer.removeAttribute("data-current-node");
+          }
           if (nextBtn) {
             (nextBtn as HTMLElement).style.display = "inline-block";
             nextBtn.textContent = "开始调酒";
@@ -316,7 +323,10 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
           const moodText = getEventDescription(state.activeEvent);
           textEl.textContent = `[需求] ${moodText}`;
         }
-        if (optionsContainer) optionsContainer.innerHTML = "";
+        if (optionsContainer) {
+          optionsContainer.innerHTML = "";
+          optionsContainer.removeAttribute("data-current-node");
+        }
         if (nextBtn) (nextBtn as HTMLElement).style.display = "none";
       }
     } else {
