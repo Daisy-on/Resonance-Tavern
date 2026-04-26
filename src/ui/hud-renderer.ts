@@ -90,7 +90,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <button class="btn" id="btn-next" style="margin-top:10px;">接受订单</button>
       </div>
       <button id="btn-profile" class="btn">档案室</button>
-      <div id="result-panel" class="panel" style="display:none; min-width:320px; text-align:center;">
+      <div id="result-panel" class="panel" style="display:none; text-align:center;">
         <h2 id="result-title" style="margin-top:0; color:#73f2ff;"></h2>
         <div id="result-score" style="margin:20px 0;"></div>
         <div id="result-desc" style="margin-bottom:20px; font-style:italic; color:#aaa;"></div>
