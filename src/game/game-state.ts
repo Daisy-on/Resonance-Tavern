@@ -71,6 +71,9 @@ export type GameState = {
   currentDialogue: string | null;
   currentDialogueNode: DialogueNode | null; // For interactive dialogue
   currentDialogueTree: DialogueTree | null; // The active dialogue tree
+  // Resonance Code System
+  hasUsedResonanceCode: boolean;
+  previousFlow?: OrderFlowState;
 };
 
 export function createDefaultGameState(): GameState {
@@ -123,5 +126,6 @@ export function createDefaultGameState(): GameState {
     currentDialogue: null,
     currentDialogueNode: null,
     currentDialogueTree: null,
+    hasUsedResonanceCode: false,
   };
 }

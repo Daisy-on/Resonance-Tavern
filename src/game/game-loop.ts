@@ -18,6 +18,7 @@ import { saveGameState } from "../systems/save/save-system";
 import { ensureDayUnlocks, isUnlocked } from "./unlock-system";
 import { createEmptyDrinkState } from "../systems/mixology/drink-state";
 import type { MixActionType } from "../systems/mixology/mix-actions";
+import { parseResonanceCode } from "../systems/social/resonance-system";
 
 type GameLoopInput = {
   canvas: HTMLCanvasElement;
@@ -83,6 +84,28 @@ export function createGameLoop(input: GameLoopInput) {
         currentState.orderFlow = "mixing_view";
       }
       return;
+    } else if (typeof action === "object" && action.type === "use_resonance_code") {
+      const code = action.payload;
+      const reward = parseResonanceCode(code);
+      if (reward && !currentState.hasUsedResonanceCode) {
+        currentState.hasUsedResonanceCode = true;
+        currentState.resources.money += reward.money;
+        currentState.resources.power += reward.power;
+        currentState.resources.rating += reward.rating;
+        
+        // Play success sound
+        audioSystem.playSuccess();
+        
+        // If we are in game_over, check if we are safe now
+        if (currentState.orderFlow === "game_over" && !checkGameOver(currentState)) {
+          currentState.orderFlow = currentState.previousFlow || "idle";
+        }
+        saveGameState(currentState);
+      } else {
+        audioSystem.playFail();
+        alert("无效的共振码，或者本局已使用过救援！");
+      }
+      return;
     }
 
     // Convert action to string for the rest of the logic
@@ -92,7 +115,12 @@ export function createGameLoop(input: GameLoopInput) {
       ensureDayUnlocks(currentState);
       if (currentState.ordersCompletedToday >= currentState.maxOrdersPerDay) {
         const { isBankrupt } = applyDailySettlement(currentState);
-        currentState.orderFlow = isBankrupt ? "game_over" : "resource_settlement";
+        if (isBankrupt) {
+          currentState.previousFlow = "resource_settlement";
+          currentState.orderFlow = "game_over";
+        } else {
+          currentState.orderFlow = "resource_settlement";
+        }
         saveGameState(currentState);
       } else {
         // Pick a random guest and order via NPC system
@@ -108,6 +136,7 @@ export function createGameLoop(input: GameLoopInput) {
       currentState.orderFlow = "mixing_view";
     } else if (actionStr === "next_day") {
       if (checkGameOver(currentState)) {
+        currentState.previousFlow = "resource_settlement";
         currentState.orderFlow = "game_over";
       } else {
         currentState.day += 1;
@@ -151,6 +180,7 @@ export function createGameLoop(input: GameLoopInput) {
 
         // 单后失败判定
         if (checkGameOver(currentState)) {
+          currentState.previousFlow = "result";
           currentState.orderFlow = "game_over";
         }
         saveGameState(currentState);
@@ -195,6 +225,7 @@ export function createGameLoop(input: GameLoopInput) {
       if (ingredientId) {
         applyIngredientCost(currentState, ingredientId);
         if (checkGameOver(currentState)) {
+          currentState.previousFlow = "mixing_view";
           currentState.orderFlow = "game_over";
           saveGameState(currentState);
           return;

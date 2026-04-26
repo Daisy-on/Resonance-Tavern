@@ -1,6 +1,7 @@
 import type { GameState } from "../game/game-state";
 import { GuestsDB } from "../content/guests";
 import { getEventDescription } from "../systems/event/event-system";
+import { generateResonanceCode } from "../systems/social/resonance-system";
 
 type Dispatch = (actionType: any) => void;
 
@@ -90,7 +91,9 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <h2 id="result-title" style="margin-top:0; color:#73f2ff;"></h2>
         <div id="result-score" style="margin:20px 0;"></div>
         <div id="result-desc" style="margin-bottom:20px; font-style:italic; color:#aaa;"></div>
-        <button class="btn" id="btn-result-next" style="width:100%; padding: 12px;">继续</button>
+        <button class="btn" id="btn-result-next" style="width:100%; padding: 12px; margin-bottom: 8px;">继续</button>
+        <button class="btn" id="btn-generate-code" style="width:100%; padding: 12px; display:none; border-color:#73f2ff; color:#73f2ff; margin-bottom: 8px;">生成共振码</button>
+        <button class="btn" id="btn-rescue" style="width:100%; padding: 12px; display:none; border-color:#ff73a8; color:#ff73a8;">输入共振码求救</button>
       </div>
       <div id="archive-overlay" class="modal-overlay" style="display:none;">
         <div class="archive-modal">
@@ -150,6 +153,24 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         else if (flow === "result") dispatch("next_guest");
         else if (flow === "resource_settlement") dispatch("next_day");
         else if (flow === "game_over") dispatch("restart");
+      }
+
+      if (target.id === "btn-generate-code" || target.closest("#btn-generate-code")) {
+        if (lastState.currentOrder && lastState.lastScore >= 95) {
+          const code = generateResonanceCode(lastState.lastScore, lastState.currentOrder.difficulty);
+          navigator.clipboard.writeText(code).then(() => {
+            alert("共振码已复制到剪贴板！发送给朋友寻求帮助吧。\\n\\n你的共振码：\\n" + code);
+          }).catch(() => {
+            alert("你的共振码：\\n" + code);
+          });
+        }
+      }
+
+      if (target.id === "btn-rescue" || target.closest("#btn-rescue")) {
+        const code = prompt("请输入好友分享的共振码：");
+        if (code) {
+          dispatch({ type: "use_resonance_code", payload: code.trim() });
+        }
       }
     });
 
@@ -345,6 +366,14 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       const scoreEl = document.getElementById("result-score");
       const descEl = document.getElementById("result-desc");
       const nextBtn = document.getElementById("btn-result-next");
+      const generateBtn = document.getElementById("btn-generate-code");
+      const rescueBtn = document.getElementById("btn-rescue");
+
+      if (generateBtn) generateBtn.style.display = "none";
+      if (rescueBtn) rescueBtn.style.display = "none";
+
+      const canRescue = !state.hasUsedResonanceCode;
+      const isDanger = state.resources.money < 30 || state.resources.power < 10 || state.resources.rating < 20;
 
       if (state.orderFlow === "idle") {
         if (titleEl) titleEl.textContent = "共振酒吧 (Cyber Resonance)";
@@ -360,10 +389,16 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         }
 
         let feedback = "";
-        if (state.lastScore >= 95) feedback = "完美共振！";
-        else if (state.lastScore >= 80) feedback = "客人很满意。";
-        else if (state.lastScore >= 60) feedback = "勉强可以接受。";
-        else feedback = "客人非常失望...";
+        if (state.lastScore >= 95) {
+          feedback = "完美共振！";
+          if (generateBtn) generateBtn.style.display = "inline-block";
+        } else if (state.lastScore >= 80) {
+          feedback = "客人很满意。";
+        } else if (state.lastScore >= 60) {
+          feedback = "勉强可以接受。";
+        } else {
+          feedback = "客人非常失望...";
+        }
         if (descEl) descEl.textContent = feedback;
         if (nextBtn) nextBtn.textContent = "下一位客人";
       } else if (state.orderFlow === "resource_settlement") {
@@ -380,11 +415,21 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
           descEl.textContent = `日结净收益：$${net.toFixed(1)}`;
         }
         if (nextBtn) nextBtn.textContent = "开始新的一天";
+        
+        if (canRescue && isDanger && rescueBtn) {
+          rescueBtn.style.display = "inline-block";
+          rescueBtn.textContent = "输入共振码求救";
+        }
       } else if (state.orderFlow === "game_over") {
         if (titleEl) titleEl.textContent = "营业结束";
         if (scoreEl) scoreEl.textContent = "任一核心资源归零，本局结束。";
         if (descEl) descEl.textContent = "建议复盘：减少低分单、控制冰块与耗材成本。";
         if (nextBtn) nextBtn.textContent = "重新开始";
+        
+        if (canRescue && rescueBtn) {
+          rescueBtn.style.display = "inline-block";
+          rescueBtn.textContent = "输入共振码复活";
+        }
       }
     }
   }
