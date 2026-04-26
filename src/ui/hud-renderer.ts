@@ -31,10 +31,10 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
 
   if (!isInitialized) {
     uiLayer.innerHTML = `
-      <div id="status-panel" class="panel">
+      <div id="status-panel" class="panel expanded">
         <div id="status-toggle">
           <h3 style="margin:0; font-size: 1.1em; letter-spacing: 1px;">状态 STATUS</h3>
-          <span id="toggle-icon">[+]</span>
+          <span id="toggle-icon">[-]</span>
         </div>
         <div id="status-content">
           <div id="status-text" style="margin-top:10px;"></div>
@@ -52,27 +52,23 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
 
       <div id="actions-panel" class="panel">
         <h4 style="margin:0 0 10px 0; color:#ff73a8; font-family:'Courier New', Courier, monospace;">基酒 SPIRITS</h4>
-        <button class="btn" id="btn-vodka" data-action="select_vodka">伏特加</button>
-        <button class="btn" id="btn-gin" data-action="select_gin">金酒</button>
-        <button class="btn" id="btn-whisky" data-action="select_whisky">威士忌</button>
-        <button class="btn" id="btn-rum" data-action="select_rum">朗姆酒</button>
+        <div class="tag" data-tag-action="select_vodka">伏特加</div>
+        <div class="tag" data-tag-action="select_gin">金酒</div>
+        <div class="tag" data-tag-action="select_whisky">威士忌</div>
+        <div class="tag" data-tag-action="select_rum">朗姆酒</div>
         
         <h4 style="margin:10px 0; color:#ff73a8; font-family:'Courier New', Courier, monospace;">添加剂 ADDITIVES</h4>
-        <button class="btn" data-action="add_syrup">糖浆 (周期-)</button>
-        <button class="btn" data-action="add_ice">冰块 (振幅-)</button>
-        <button class="btn" data-action="add_tonic">捣拌棒 (周期+)</button>
-        <button class="btn" data-action="stir_cw">顺时针搅拌 (相位+)</button>
-        <button class="btn" data-action="stir_ccw">逆时针搅拌 (相位-)</button>
-        <button class="btn" data-action="add_lemon">柠檬 (边缘+)</button>
-        <button class="btn" data-action="add_soda">苏打水 (毛刺+)</button>
-        <button class="btn" data-action="add_bitters">苦精 (容错+)</button>
-        <button class="btn" data-action="shake">摇壶 (谐波+)</button>
-        <button class="btn" data-action="measure_cup">量杯 (平滑++)</button>
-        <button class="btn" data-action="flame">喷枪 (拖尾+)</button>
-        
-        <hr style="border-color:#73f2ff; margin: 10px 0; opacity: 0.3;">
-        <button class="btn" data-action="reset">重做</button>
-        <button class="btn" id="btn-submit-orig" data-action="submit" style="border-color:#ff73a8; color:#ff73a8;">上酒</button>
+        <div class="tag" data-tag-action="add_syrup">糖浆 (周期-)</div>
+        <div class="tag" data-tag-action="add_ice">冰块 (振幅-)</div>
+        <div class="tag" data-tag-action="add_tonic">捣拌棒 (周期+)</div>
+        <div class="tag" data-tag-action="stir_cw">顺时针搅拌 (相位+)</div>
+        <div class="tag" data-tag-action="stir_ccw">逆时针搅拌 (相位-)</div>
+        <div class="tag" data-tag-action="add_lemon">柠檬 (边缘+)</div>
+        <div class="tag" data-tag-action="add_soda">苏打水 (毛刺+)</div>
+        <div class="tag" data-tag-action="add_bitters">苦精 (容错+)</div>
+        <div class="tag" data-tag-action="shake">摇壶 (谐波+)</div>
+        <div class="tag" data-tag-action="measure_cup">量杯 (平滑++)</div>
+        <div class="tag" data-tag-action="flame">喷枪 (拖尾+)</div>
       </div>
       <div id="dialogue-panel" class="panel" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom: 1px solid rgba(255,115,168,0.3); gap:10px;">
@@ -234,7 +230,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     actionsPanel.style.display = state.orderFlow === "mixing_view" ? "none" : "block";
 
     // Original buttons visibility logic
-    const spiritGroup = actionsPanel.querySelectorAll("button[data-action^='select_'], button[data-action^='add_'], button[data-action='stir'], button[data-action='stir_cw'], button[data-action='stir_ccw']");
+    const spiritGroup = actionsPanel.querySelectorAll(".tag");
     spiritGroup.forEach(btn => {
       (btn as HTMLElement).style.display = "inline-block";
     });
@@ -244,8 +240,10 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     });
   }
 
-  document.querySelectorAll(".btn, .table-btn").forEach((btn) => {
-    const action = btn.getAttribute("data-action");
+  // Update Action Panel Tags (inventory check)
+  document.querySelectorAll("#actions-panel .tag").forEach((tagEl) => {
+    const tag = tagEl as HTMLElement;
+    const action = tag.getAttribute("data-tag-action");
     const actionUnlockMap: Record<string, string> = {
       select_vodka: "vodka",
       select_gin: "gin",
@@ -267,20 +265,25 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     const requiredUnlock = action ? actionUnlockMap[action] : null;
     const isUnlocked = !requiredUnlock || state.inventory.includes(requiredUnlock);
 
+    if (isUnlocked) {
+      tag.classList.remove("locked");
+    } else {
+      tag.classList.add("locked");
+    }
+
+    if (!tag.dataset.label) tag.dataset.label = tag.textContent || "";
+    const baseLabel = tag.dataset.label;
+    tag.textContent = isUnlocked ? baseLabel : `${baseLabel} [未解锁]`;
+  });
+
+  document.querySelectorAll(".table-btn").forEach((btn) => {
+    const action = btn.getAttribute("data-action");
+    const isMixing = state.orderFlow === "mixing" || state.orderFlow === "guest_enter" || state.orderFlow === "mixing_view";
+
     if (action === "submit") {
       (btn as HTMLButtonElement).disabled = !isMixing || state.drink.volume === 0;
     } else if (action === "reset") {
       (btn as HTMLButtonElement).disabled = !isMixing;
-    } else if (action && action.startsWith("select_")) {
-      (btn as HTMLButtonElement).disabled = !isMixing || state.drink.baseSpirit !== null || !isUnlocked;
-    } else if (action) {
-      (btn as HTMLButtonElement).disabled = !isMixing || !isUnlocked;
-    }
-
-    if (btn.classList.contains("btn")) {
-      const button = btn as HTMLButtonElement;
-      const baseLabel = button.dataset.label || button.textContent || "";
-      button.textContent = isUnlocked ? baseLabel : `${baseLabel} [未解锁]`;
     }
   });
 
@@ -288,10 +291,10 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
   const diagPanel = document.getElementById("dialogue-panel");
   if (diagPanel) {
     const showDiag = state.orderFlow === "guest_enter" || state.orderFlow === "dialogue" || state.orderFlow === "mixing";
-    
+
     if (showDiag) {
       (diagPanel as HTMLElement).style.display = "block";
-      
+
       const nameEl = document.getElementById("guest-name");
       const titleEl = document.getElementById("guest-title");
       const textEl = document.getElementById("guest-dialogue");
@@ -308,7 +311,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         // We are in interactive dialogue mode
         if (state.currentDialogueNode) {
           if (textEl) textEl.textContent = state.currentDialogueNode.text;
-          
+
           // Render options only when node changes
           if (optionsContainer) {
             const currentOptionNodeId = state.currentDialogueNode.id;
@@ -415,7 +418,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
           descEl.textContent = `日结净收益：$${net.toFixed(1)}`;
         }
         if (nextBtn) nextBtn.textContent = "开始新的一天";
-        
+
         if (canRescue && isDanger && rescueBtn) {
           rescueBtn.style.display = "inline-block";
           rescueBtn.textContent = "输入共振码求救";
@@ -425,7 +428,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         if (scoreEl) scoreEl.textContent = "任一核心资源归零，本局结束。";
         if (descEl) descEl.textContent = "建议复盘：减少低分单、控制冰块与耗材成本。";
         if (nextBtn) nextBtn.textContent = "重新开始";
-        
+
         if (canRescue && rescueBtn) {
           rescueBtn.style.display = "inline-block";
           rescueBtn.textContent = "输入共振码复活";

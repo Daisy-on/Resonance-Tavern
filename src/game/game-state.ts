@@ -76,6 +76,10 @@ export type GameState = {
   previousFlow?: OrderFlowState;
 };
 
+export function getMaxOrdersPerDay(day: number): number {
+  return day <= 7 ? 4 : 5;
+}
+
 export function createDefaultGameState(): GameState {
   return {
     version: 2,
@@ -107,7 +111,7 @@ export function createDefaultGameState(): GameState {
     currentOrder: null,
     drink: createEmptyDrinkState(),
     ordersCompletedToday: 0,
-    maxOrdersPerDay: 5,
+    maxOrdersPerDay: getMaxOrdersPerDay(1),
     lastScore: 0,
     mouse: { x: 0, y: 0, isDown: false },
     draggedItem: null,

@@ -75,6 +75,26 @@ canvas {
   color: #73f2ff;
 }
 
+.tag {
+  display: inline-block;
+  background: rgba(115, 242, 255, 0.05);
+  color: #73f2ff;
+  border: 1px solid rgba(115, 242, 255, 0.2);
+  padding: 4px 10px;
+  margin: 3px;
+  font-size: 0.85em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  pointer-events: none; /* Non-interactive */
+}
+
+.tag.locked {
+  opacity: 0.4;
+  color: #666;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .dialogue-option-btn {
   width: 100%;
   text-align: left;

@@ -1,4 +1,4 @@
-import { createDefaultGameState, type GameState } from "./game-state";
+import { createDefaultGameState, getMaxOrdersPerDay, type GameState } from "./game-state";
 import { applyMixAction, getIngredientIdByAction } from "../systems/mixology/mixology-system";
 import { calcAdvancedScoreWithBreakdown } from "../systems/wave/wave-match";
 import { generateNextGuest, updateGuestAffinity } from "../systems/npc/npc-system";
@@ -30,6 +30,7 @@ export function createGameLoop(input: GameLoopInput) {
   if (!ctx) throw new Error("Canvas 2D context is not available");
 
   let currentState = { ...input.state };
+  currentState.maxOrdersPerDay = getMaxOrdersPerDay(currentState.day);
   ensureDayUnlocks(currentState);
 
   const mixActions = new Set<MixActionType>([
@@ -140,6 +141,7 @@ export function createGameLoop(input: GameLoopInput) {
         currentState.orderFlow = "game_over";
       } else {
         currentState.day += 1;
+        currentState.maxOrdersPerDay = getMaxOrdersPerDay(currentState.day);
         ensureDayUnlocks(currentState);
         currentState.ordersCompletedToday = 0;
         currentState.orderFlow = "idle";

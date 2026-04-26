@@ -1,5 +1,6 @@
 import type { GameState } from "../../game/game-state";
 import { createDefaultGameState } from "../../game/game-state";
+import { getMaxOrdersPerDay } from "../../game/game-state";
 
 const SAVE_KEY = "cyber-resonance-bar-save";
 const CURRENT_VERSION = 2;
@@ -41,6 +42,8 @@ export function loadGameState(): GameState | null {
     if (!parsed.version || parsed.version < CURRENT_VERSION) {
       console.warn(`[SaveSystem] Outdated save file (Version ${parsed.version}). Migrating...`);
     }
+
+    merged.maxOrdersPerDay = getMaxOrdersPerDay(merged.day);
 
     return merged;
   } catch (error) {
