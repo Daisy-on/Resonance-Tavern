@@ -19,6 +19,7 @@ import { ensureDayUnlocks, isUnlocked } from "./unlock-system";
 import { createEmptyDrinkState } from "../systems/mixology/drink-state";
 import type { MixActionType } from "../systems/mixology/mix-actions";
 import { parseResonanceCode } from "../systems/social/resonance-system";
+import { getMixingViewLayout } from "../ui/mixing-layout";
 
 type GameLoopInput = {
   canvas: HTMLCanvasElement;
@@ -253,25 +254,33 @@ export function createGameLoop(input: GameLoopInput) {
     requestAnimationFrame(tick);
   };
 
-  const handleMouseDown = (e: MouseEvent) => {
+  const getPointerPosition = (e: PointerEvent) => {
+    const rect = input.canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
+  const handlePointerDown = (e: PointerEvent) => {
     if (currentState.orderFlow !== "mixing_view") return;
 
-    const rect = input.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getPointerPosition(e);
+    currentState.mouse.x = x;
+    currentState.mouse.y = y;
 
     currentState.mouse.isDown = true;
+    input.canvas.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
 
     // Hit detection for items
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const tableY = h - 300; // Updated table position
+    const layout = getMixingViewLayout(w, h);
 
     const isInside = (px: number, py: number, rx: number, ry: number, rw: number, rh: number) => {
       return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
     };
-
-    const propY = tableY + 60;
 
     const canDragAction = (candidate: MixActionType): boolean => {
       const unlockMap: Partial<Record<MixActionType, string>> = {
@@ -296,36 +305,34 @@ export function createGameLoop(input: GameLoopInput) {
       return !unlockId || isUnlocked(currentState, unlockId);
     };
 
-    // 1. Spirits (Left) - Size 80
-    if (isInside(x, y, 60, propY - 40, 460, 140)) {
-      if (x < 160) currentState.draggedItem = canDragAction("select_vodka") ? "select_vodka" : null;
-      else if (x < 280) currentState.draggedItem = canDragAction("select_gin") ? "select_gin" : null;
-      else if (x < 400) currentState.draggedItem = canDragAction("select_whisky") ? "select_whisky" : null;
+    if (isInside(x, y, layout.spiritsHitbox.x, layout.spiritsHitbox.y, layout.spiritsHitbox.width, layout.spiritsHitbox.height)) {
+      const spiritStart = layout.spiritsHitbox.x;
+      const [vodkaEnd, ginEnd, whiskyEnd] = layout.spiritsThresholds;
+      if (x < spiritStart + vodkaEnd) currentState.draggedItem = canDragAction("select_vodka") ? "select_vodka" : null;
+      else if (x < spiritStart + ginEnd) currentState.draggedItem = canDragAction("select_gin") ? "select_gin" : null;
+      else if (x < spiritStart + whiskyEnd) currentState.draggedItem = canDragAction("select_whisky") ? "select_whisky" : null;
       else currentState.draggedItem = canDragAction("select_rum") ? "select_rum" : null;
       return;
     }
 
-    // 2. Ice Box (Middle-ish) - Size 100
-    if (isInside(x, y, w / 2 - 300, propY + 20, 120, 120)) {
+    if (isInside(x, y, layout.iceBoxRect.x, layout.iceBoxRect.y, layout.iceBoxRect.width, layout.iceBoxRect.height)) {
       currentState.draggedItem = canDragAction("add_ice") ? "add_ice" : null;
       return;
     }
 
-    // 3. Additives (Right) - Row 1
-    // Matches drawAdditivesSet(ctx, w - 620, propY - 20, state)
-    if (isInside(x, y, w - 620, propY - 30, 520, 120)) {
-      if (x < w - 500) currentState.draggedItem = canDragAction("add_syrup") ? "add_syrup" : null;
-      else if (x < w - 380) currentState.draggedItem = canDragAction("add_tonic") ? "add_tonic" : null;
-      else if (x < w - 280) currentState.draggedItem = canDragAction("add_soda") ? "add_soda" : null;
-      else if (x < w - 180) currentState.draggedItem = canDragAction("add_lemon") ? "add_lemon" : null;
+    if (isInside(x, y, layout.additivesHitbox.x, layout.additivesHitbox.y, layout.additivesHitbox.width, layout.additivesHitbox.height)) {
+      const additivesStart = layout.additivesHitbox.x;
+      const [syrupEnd, tonicEnd, sodaEnd, lemonEnd] = layout.additivesThresholds;
+      if (x < additivesStart + syrupEnd) currentState.draggedItem = canDragAction("add_syrup") ? "add_syrup" : null;
+      else if (x < additivesStart + tonicEnd) currentState.draggedItem = canDragAction("add_tonic") ? "add_tonic" : null;
+      else if (x < additivesStart + sodaEnd) currentState.draggedItem = canDragAction("add_soda") ? "add_soda" : null;
+      else if (x < additivesStart + lemonEnd) currentState.draggedItem = canDragAction("add_lemon") ? "add_lemon" : null;
       else currentState.draggedItem = canDragAction("add_bitters") ? "add_bitters" : null;
       return;
     }
 
-    // 4. Stir Tools (CW / CCW)
-    // Matches drawStirTools(ctx, w / 2 + 70, propY + 60, state)
-    if (isInside(x, y, w / 2 + 70, propY + 50, 200, 100)) {
-      if (x < w / 2 + 160) {
+    if (isInside(x, y, layout.stirToolsRect.x, layout.stirToolsRect.y, layout.stirToolsRect.width, layout.stirToolsRect.height)) {
+      if (x < layout.stirToolsRect.x + layout.stirToolsRect.width / 2) {
         currentState.draggedItem = canDragAction("stir_cw") ? "stir_cw" : null;
       } else {
         currentState.draggedItem = canDragAction("stir_ccw") ? "stir_ccw" : null;
@@ -333,22 +340,26 @@ export function createGameLoop(input: GameLoopInput) {
       return;
     }
 
-    // 5. Advanced tools (Row 2)
-    if (isInside(x, y, w - 380, propY + 80, 380, 100)) {
-      if (x < w - 290) currentState.draggedItem = canDragAction("shake") ? "shake" : null;
-      else if (x < w - 200) currentState.draggedItem = canDragAction("measure_cup") ? "measure_cup" : null;
+    if (isInside(x, y, layout.advancedToolsRect.x, layout.advancedToolsRect.y, layout.advancedToolsRect.width, layout.advancedToolsRect.height)) {
+      const [shakeEnd, measureEnd] = layout.advancedToolThresholds;
+      if (x < layout.advancedToolsRect.x + shakeEnd) currentState.draggedItem = canDragAction("shake") ? "shake" : null;
+      else if (x < layout.advancedToolsRect.x + measureEnd) currentState.draggedItem = canDragAction("measure_cup") ? "measure_cup" : null;
       else currentState.draggedItem = canDragAction("flame") ? "flame" : null;
       return;
     }
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    const rect = input.canvas.getBoundingClientRect();
-    currentState.mouse.x = e.clientX - rect.left;
-    currentState.mouse.y = e.clientY - rect.top;
+  const handlePointerMove = (e: PointerEvent) => {
+    const { x, y } = getPointerPosition(e);
+    currentState.mouse.x = x;
+    currentState.mouse.y = y;
+    if (currentState.mouse.isDown && currentState.orderFlow === "mixing_view") {
+      e.preventDefault();
+    }
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e: PointerEvent) => {
+    input.canvas.releasePointerCapture?.(e.pointerId);
     if (currentState.orderFlow !== "mixing_view") {
       currentState.mouse.isDown = false;
       currentState.draggedItem = null;
@@ -358,17 +369,12 @@ export function createGameLoop(input: GameLoopInput) {
     if (currentState.draggedItem) {
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const tableY = h - 300;
-      const cupX = w / 2;
-      const cupY = tableY + 180; // Corrected cup bottom Y from bar-renderer
-      const cupHeight = 120;
-      const cupTop = cupY - cupHeight;
-
-      // Check if dropped within a generous bounding box around the cup
-      const isOverCup = currentState.mouse.x > cupX - 80 &&
-        currentState.mouse.x < cupX + 80 &&
-        currentState.mouse.y > cupTop - 80 &&
-        currentState.mouse.y < cupY + 40;
+      const layout = getMixingViewLayout(w, h);
+      const dropRect = layout.cup.dropRect;
+      const isOverCup = currentState.mouse.x >= dropRect.x &&
+        currentState.mouse.x <= dropRect.x + dropRect.width &&
+        currentState.mouse.y >= dropRect.y &&
+        currentState.mouse.y <= dropRect.y + dropRect.height;
 
       if (isOverCup) {
         dispatch(currentState.draggedItem as string);
@@ -383,9 +389,10 @@ export function createGameLoop(input: GameLoopInput) {
     start() {
       resize();
       window.addEventListener("resize", resize);
-      input.canvas.addEventListener("mousedown", handleMouseDown);
-      input.canvas.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      input.canvas.addEventListener("pointerdown", handlePointerDown);
+      input.canvas.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
       tick();
     },
   };

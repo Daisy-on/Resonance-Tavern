@@ -8,6 +8,9 @@ type Dispatch = (actionType: any) => void;
 let isInitialized = false;
 let lastState: GameState | null = null;
 let isArchiveOpen = false;
+let isStatusPanelExpanded = true;
+let autoCollapsedStatusPanel = false;
+let lastOrderFlow: GameState["orderFlow"] | null = null;
 
 const GUEST_ACCENT_COLORS: Record<string, string> = {
   mechanic_01: "#ff9b73",
@@ -31,6 +34,10 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
 
   if (!isInitialized) {
     uiLayer.innerHTML = `
+      <div id="orientation-hint" class="panel">
+        <div style="color:#ff73a8; font-weight:bold; margin-bottom:6px;">建议横屏体验</div>
+        <div style="font-size:0.9em; color:#d9f3ff;">当前玩法更适合横屏操作。你仍可继续浏览，但调酒体验建议旋转设备。</div>
+      </div>
       <div id="status-panel" class="panel expanded">
         <div id="status-toggle">
           <h3 style="margin:0; font-size: 1.1em; letter-spacing: 1px;">状态 STATUS</h3>
@@ -82,7 +89,7 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         <div id="dialogue-options" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
         <button class="btn" id="btn-next" style="margin-top:10px;">接受订单</button>
       </div>
-      <button id="btn-profile" class="btn" style="display:none;">档案室</button>
+      <button id="btn-profile" class="btn">档案室</button>
       <div id="result-panel" class="panel" style="display:none; min-width:320px; text-align:center;">
         <h2 id="result-title" style="margin-top:0; color:#73f2ff;"></h2>
         <div id="result-score" style="margin:20px 0;"></div>
@@ -116,8 +123,10 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
         const panel = document.getElementById("status-panel");
         const icon = document.getElementById("toggle-icon");
         if (panel && icon) {
-          panel.classList.toggle("expanded");
-          icon.textContent = panel.classList.contains("expanded") ? "[-]" : "[+]";
+          isStatusPanelExpanded = !isStatusPanelExpanded;
+          autoCollapsedStatusPanel = false;
+          panel.classList.toggle("expanded", isStatusPanelExpanded);
+          icon.textContent = isStatusPanelExpanded ? "[-]" : "[+]";
         }
         return;
       }
@@ -170,11 +179,6 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       }
     });
 
-    document.querySelectorAll("#actions-panel .btn[data-action]").forEach((btn) => {
-      const button = btn as HTMLButtonElement;
-      button.dataset.label = button.textContent || "";
-    });
-
     isInitialized = true;
   }
 
@@ -191,6 +195,25 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       今日净收益: $${(state.dailyLedger.orderIncomeToday - state.dailyLedger.ingredientCostToday - state.dailyLedger.rentToday).toFixed(1)}<br/>
       今日冰耗电: ${state.dailyLedger.powerFromIceToday.toFixed(1)}
     `;
+  }
+
+  const statusPanel = document.getElementById("status-panel");
+  const toggleIcon = document.getElementById("toggle-icon");
+  if (statusPanel && toggleIcon) {
+    const isCompactLandscape = window.innerWidth > window.innerHeight && (window.innerWidth <= 932 || window.innerHeight <= 500);
+    const enteringCompactMixing = lastOrderFlow !== "mixing_view" && state.orderFlow === "mixing_view" && isCompactLandscape;
+    const leavingMixing = lastOrderFlow === "mixing_view" && state.orderFlow !== "mixing_view";
+
+    if (enteringCompactMixing && isStatusPanelExpanded) {
+      isStatusPanelExpanded = false;
+      autoCollapsedStatusPanel = true;
+    } else if (leavingMixing && autoCollapsedStatusPanel) {
+      isStatusPanelExpanded = true;
+      autoCollapsedStatusPanel = false;
+    }
+
+    statusPanel.classList.toggle("expanded", isStatusPanelExpanded);
+    toggleIcon.textContent = isStatusPanelExpanded ? "[-]" : "[+]";
   }
 
   // 1.5 Update Locked Panel (Inside Drawer)
@@ -216,7 +239,6 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     }
   }
 
-  // 1.6 Show/Hide Table Controls
   const tableControls = document.getElementById("table-controls");
   if (tableControls) {
     tableControls.style.display = state.orderFlow === "mixing_view" ? "flex" : "none";
@@ -276,14 +298,20 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
     tag.textContent = isUnlocked ? baseLabel : `${baseLabel} [未解锁]`;
   });
 
+  const archiveBtn = document.getElementById("btn-profile");
+  if (archiveBtn) {
+    const shouldShowArchiveBtn = state.orderFlow !== "mixing_view" && !isArchiveOpen;
+    archiveBtn.style.display = shouldShowArchiveBtn ? "inline-block" : "none";
+  }
+
   document.querySelectorAll(".table-btn").forEach((btn) => {
     const action = btn.getAttribute("data-action");
-    const isMixing = state.orderFlow === "mixing" || state.orderFlow === "guest_enter" || state.orderFlow === "mixing_view";
+    const canOperateMixing = state.orderFlow === "mixing_view";
 
     if (action === "submit") {
-      (btn as HTMLButtonElement).disabled = !isMixing || state.drink.volume === 0;
+      (btn as HTMLButtonElement).disabled = !canOperateMixing || state.drink.volume === 0;
     } else if (action === "reset") {
-      (btn as HTMLButtonElement).disabled = !isMixing;
+      (btn as HTMLButtonElement).disabled = !canOperateMixing;
     }
   });
 
@@ -447,6 +475,8 @@ export function renderHud(state: GameState, dispatch: Dispatch) {
       overlay.style.display = "none";
     }
   }
+
+  lastOrderFlow = state.orderFlow;
 }
 
 function renderArchive(state: GameState) {

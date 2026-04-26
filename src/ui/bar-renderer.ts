@@ -2,6 +2,7 @@ import type { GameState } from "../game/game-state";
 import { generateWave, drinkStateToWaveParams } from "../systems/wave/wave-generator";
 import { NPC_SPRITES, COLOR_MAP, PROP_SPRITES } from "./pixel-assets";
 import { getEventDescription } from "../systems/event/event-system";
+import { getMixingViewLayout } from "./mixing-layout";
 
 export function renderBar(ctx: CanvasRenderingContext2D, width: number, height: number, state: GameState) {
   // Clear screen
@@ -67,6 +68,9 @@ export function renderBar(ctx: CanvasRenderingContext2D, width: number, height: 
 }
 
 function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number, state: GameState) {
+  const layout = getMixingViewLayout(w, h);
+  const scale = layout.assetScale;
+
   // Dark focus background
   ctx.fillStyle = "#0f0f1a";
   ctx.fillRect(0, 0, w, h);
@@ -81,83 +85,61 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   }
 
   // Large Table
-  const tableY = h - 300; // Moved table up slightly to fit bigger props inside
-  const tableHeight = 300;
   ctx.fillStyle = "#1a0a1a";
-  ctx.fillRect(0, tableY, w, tableHeight);
+  ctx.fillRect(0, layout.tableY, w, layout.tableHeight);
   ctx.strokeStyle = "#ff2d7d";
   ctx.lineWidth = 4;
-  ctx.strokeRect(-10, tableY, w + 20, 10);
+  ctx.strokeRect(-10, layout.tableY, w + 20, 10);
 
-  // Layout positions - Props are now placed INSIDE the table (y > tableY)
-  const propY = tableY + 60;
-
-  // Left: Spirits (Made LARGER: scale 50 -> 80)
-  drawSpiritsSet(ctx, 60, propY - 40, state);
+  drawSpiritsSet(ctx, layout.spiritsOrigin.x, layout.spiritsOrigin.y, state, scale);
 
   // Middle: Ice Box
-  drawIceBox(ctx, w / 2 - 300, propY + 20);
+  drawIceBox(ctx, layout.iceBoxRect.x, layout.iceBoxRect.y, scale);
 
-  // Middle: Cup (Smaller and floating inside table area)
-  const cupX = w / 2;
-  const cupY = tableY + 180;
-  drawPixelCup(ctx, cupX, cupY, 80, 120, state.drink);
+  drawPixelCup(ctx, layout.cup.x, layout.cup.y, layout.cup.width, layout.cup.height, state.drink);
 
   // Right: Additives
-  drawAdditivesSet(ctx, w - 620, propY - 20, state);
+  drawAdditivesSet(ctx, layout.additivesOrigin.x, layout.additivesOrigin.y, state, scale);
 
   // Right: Stir tools (CW / CCW)
-  drawStirTools(ctx, w / 2 + 70, propY + 60, state);
+  drawStirTools(ctx, layout.stirToolsRect.x, layout.stirToolsRect.y + (layout.isCompactLandscape ? 8 : 10), state, scale);
 
   // Right: Advanced Tools (Second row)
-  drawAdvancedTools(ctx, w - 380, propY + 100, state);
+  drawAdvancedTools(ctx, layout.advancedToolsRect.x, layout.advancedToolsRect.y + (layout.isCompactLandscape ? 12 : 20), state, scale);
 
-  // Top: Oscilloscope (Moved to center of viewport)
-  const waveAreaWidth = w * 0.85; // Slightly wider
-  const waveAreaX = (w - waveAreaWidth) / 2;
-  const waveAreaHeight = 320; // Taller to prevent overflow
-  const waveAreaY = (h - waveAreaHeight) / 2 - 80; // Centered in viewport, slightly offset up for table
-
-  drawOscilloscope(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight);
+  drawOscilloscope(ctx, layout.waveArea.x, layout.waveArea.centerY, layout.waveArea.width, layout.waveArea.height);
 
   // 2. Draw order and event info OUTSIDE at the BOTTOM of oscilloscope screen
-  const screenBottomY = waveAreaY + waveAreaHeight / 2;
-  const infoY = screenBottomY + 35;
+  const infoY = layout.infoTextY;
 
   if (state.currentOrder || state.activeEvent) {
-    // Text background for better legibility - Digital Display Style
-    const boxWidth = w * 0.7;
-    const boxHeight = 100;
-    const boxX = (w - boxWidth) / 2;
-    const boxY = screenBottomY + 10;
-
     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+    ctx.fillRect(layout.infoBox.x, layout.infoBox.y, layout.infoBox.width, layout.infoBox.height);
     
     // Subtle border for the info box
     ctx.strokeStyle = "rgba(115, 242, 255, 0.3)";
     ctx.lineWidth = 1;
-    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    ctx.strokeRect(layout.infoBox.x, layout.infoBox.y, layout.infoBox.width, layout.infoBox.height);
 
     if (state.currentOrder) {
       ctx.fillStyle = "#fff";
-      ctx.font = "italic 16px Arial";
+      ctx.font = layout.isCompactLandscape ? "italic 13px Arial" : "italic 16px Arial";
       ctx.textAlign = "center";
       ctx.fillText(`“${state.currentOrder.moodText}”`, w / 2, infoY);
     }
 
     if (state.activeEvent) {
       ctx.fillStyle = "#ff73a8"; // Use a slightly softer pink
-      ctx.font = "bold 14px Arial";
+      ctx.font = layout.isCompactLandscape ? "bold 12px Arial" : "bold 14px Arial";
       ctx.textAlign = "center";
-      ctx.fillText(getEventDescription(state.activeEvent), w / 2, infoY + 25);
+      ctx.fillText(getEventDescription(state.activeEvent), w / 2, infoY + (layout.isCompactLandscape ? 18 : 25));
     }
     ctx.textAlign = "left";
   }
 
   if (state.currentOrder) {
     const targetWave = generateWave(state.currentOrder.targetParams);
-    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, targetWave, "rgba(255, 125, 175, 0.9)", 2, true);
+    drawWave(ctx, layout.waveArea.x, layout.waveArea.centerY, layout.waveArea.width, layout.waveArea.height, targetWave, "rgba(255, 125, 175, 0.9)", 2, true);
 
     // Draw realtime hints (Move them slightly lower if needed)
     if (state.drink.baseSpirit) {
@@ -177,9 +159,9 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
 
       if (hint) {
         ctx.fillStyle = "rgba(115, 242, 255, 1)";
-        ctx.font = "bold 14px Arial";
+        ctx.font = layout.isCompactLandscape ? "bold 12px Arial" : "bold 14px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(`[提示] ${hint}`, w / 2, screenBottomY + 85);
+        ctx.fillText(`[提示] ${hint}`, w / 2, layout.hintY);
         ctx.textAlign = "left";
       }
     }
@@ -187,27 +169,24 @@ function drawMixingFocusView(ctx: CanvasRenderingContext2D, w: number, h: number
   if (state.drink.baseSpirit) {
     const currentParams = drinkStateToWaveParams(state.drink);
     const currentWave = generateWave(currentParams);
-    drawWave(ctx, waveAreaX, waveAreaY, waveAreaWidth, waveAreaHeight, currentWave, "rgba(95, 240, 255, 1)", 3.5, false);
+    drawWave(ctx, layout.waveArea.x, layout.waveArea.centerY, layout.waveArea.width, layout.waveArea.height, currentWave, "rgba(95, 240, 255, 1)", 3.5, false);
   }
 
   // 3. Draw real-time parameters in TOP-RIGHT of oscilloscope screen (High visibility)
   if (state.drink.baseSpirit) {
     ctx.save();
     const d = state.drink;
-    const padding = 10;
-    const textX = waveAreaX + waveAreaWidth - padding;
-    const textY = waveAreaY - waveAreaHeight / 2 + 25;
 
     // Small dark glow background for text
     ctx.shadowColor = "rgba(0,0,0,0.8)";
     ctx.shadowBlur = 4;
 
     ctx.fillStyle = "rgba(115, 242, 255, 0.9)";
-    ctx.font = "bold 13px 'Courier New', monospace";
+    ctx.font = layout.isCompactLandscape ? "bold 11px 'Courier New', monospace" : "bold 13px 'Courier New', monospace";
     ctx.textAlign = "right";
 
-    ctx.fillText(`振幅:${d.amplitude} 周期:${d.periodLevel} 相位:${d.phaseStep}`, textX, textY);
-    ctx.fillText(`边缘:${d.edgeSharpness} 毛刺:${d.noiseLevel} 谐波:${d.harmonics} 拖尾:${d.decay}`, textX, textY + 18);
+    ctx.fillText(`振幅:${d.amplitude} 周期:${d.periodLevel} 相位:${d.phaseStep}`, layout.parameterText.x, layout.parameterText.y);
+    ctx.fillText(`边缘:${d.edgeSharpness} 毛刺:${d.noiseLevel} 谐波:${d.harmonics} 拖尾:${d.decay}`, layout.parameterText.x, layout.parameterText.y + (layout.isCompactLandscape ? 16 : 18));
 
     ctx.restore();
   }
@@ -243,142 +222,150 @@ function drawPixelSprite(ctx: CanvasRenderingContext2D, x: number, y: number, wi
   ctx.restore();
 }
 
-function drawSpiritsSet(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
-  const shelfY = y + 80; // The bottom line where bottles sit
+function drawSpiritsSet(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState, scale = 1) {
+  const shelfY = y + 80 * scale; // The bottom line where bottles sit
+  const labelFontSize = Math.max(10, Math.round(14 * scale));
   ctx.save();
   ctx.textAlign = "center";
-  ctx.font = "bold 14px Arial";
+  ctx.font = `bold ${labelFontSize}px Arial`;
   ctx.fillStyle = "#fff";
 
   // 1. Vodka (Original Style)
-  const vWidth = 80;
+  const vWidth = 80 * scale;
   const vData = PROP_SPRITES["vodka_bottle"];
   const vHeight = (vData.length / vData[0].length) * vWidth;
   drawPixelSprite(ctx, x, shelfY - vHeight, vWidth, vData);
-  ctx.fillText("伏特加", x + vWidth / 2, shelfY + 20);
+  ctx.fillText("伏特加", x + vWidth / 2, shelfY + 20 * scale);
 
   // 2. Gin (Shrink down to slightly larger than vodka)
-  const gWidth = 84;
+  const gWidth = 84 * scale;
   const gData = PROP_SPRITES["gin_bottle"];
   const gHeight = (gData.length / gData[0].length) * gWidth;
-  drawPixelSprite(ctx, x + 120, shelfY - gHeight, gWidth, gData);
-  ctx.fillText("金酒", x + 120 + gWidth / 2, shelfY + 20);
+  drawPixelSprite(ctx, x + 120 * scale, shelfY - gHeight, gWidth, gData);
+  ctx.fillText("金酒", x + 120 * scale + gWidth / 2, shelfY + 20 * scale);
 
   // 3. Whisky (Taller body, lighter brown)
-  const wWidth = 80;
+  const wWidth = 80 * scale;
   const wData = PROP_SPRITES["whisky_bottle"];
   const wHeight = (wData.length / wData[0].length) * wWidth;
-  drawPixelSprite(ctx, x + 240, shelfY - wHeight, wWidth, wData);
-  ctx.fillText("威士忌", x + 240 + wWidth / 2, shelfY + 20);
+  drawPixelSprite(ctx, x + 240 * scale, shelfY - wHeight, wWidth, wData);
+  ctx.fillText("威士忌", x + 240 * scale + wWidth / 2, shelfY + 20 * scale);
 
   // 4. Rum (Larger overall, narrow width)
-  const rWidth = 72;
+  const rWidth = 72 * scale;
   const rData = PROP_SPRITES["rum_bottle"];
   const rHeight = (rData.length / rData[0].length) * rWidth;
-  drawPixelSprite(ctx, x + 370, shelfY - rHeight, rWidth, rData);
-  ctx.fillText("朗姆酒", x + 370 + rWidth / 2, shelfY + 20);
+  drawPixelSprite(ctx, x + 370 * scale, shelfY - rHeight, rWidth, rData);
+  ctx.fillText("朗姆酒", x + 370 * scale + rWidth / 2, shelfY + 20 * scale);
 
   if (!state.inventory.includes("rum")) {
-    drawLockedOverlay(ctx, x + 370, shelfY - rHeight, rWidth, rHeight);
+    drawLockedOverlay(ctx, x + 370 * scale, shelfY - rHeight, rWidth, rHeight);
   }
   ctx.restore();
 }
 
-function drawIceBox(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  drawPixelSprite(ctx, x, y, 100, PROP_SPRITES["ice_bowl"]);
+function drawIceBox(ctx: CanvasRenderingContext2D, x: number, y: number, scale = 1) {
+  const size = 100 * scale;
+  const labelFontSize = Math.max(10, Math.round(14 * scale));
+  drawPixelSprite(ctx, x, y, size, PROP_SPRITES["ice_bowl"]);
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 14px Arial";
-  ctx.fillText("冰块", x + 35, y + 120);
+  ctx.font = `bold ${labelFontSize}px Arial`;
+  ctx.fillText("冰块", x + 35 * scale, y + 120 * scale);
 }
 
-function drawAdditivesSet(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
+function drawAdditivesSet(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState, scale = 1) {
+  const itemWidth = 60 * scale;
+  const labelFontSize = Math.max(10, Math.round(14 * scale));
   // Syrup
-  drawPixelSprite(ctx, x, y, 60, PROP_SPRITES["syrup_bottle"]);
+  drawPixelSprite(ctx, x, y, itemWidth, PROP_SPRITES["syrup_bottle"]);
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 14px Arial";
-  ctx.fillText("糖浆", x + 5, y - 10);
+  ctx.font = `bold ${labelFontSize}px Arial`;
+  ctx.fillText("糖浆", x + 5 * scale, y - 10 * scale);
 
   // Tonic (swapped with lemon on table)
-  drawPixelSprite(ctx, x + 105, y, 60, PROP_SPRITES["tonic_vial"]);
+  drawPixelSprite(ctx, x + 105 * scale, y, itemWidth, PROP_SPRITES["tonic_vial"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("捣拌棒", x + 110, y - 10);
+  ctx.fillText("捣拌棒", x + 110 * scale, y - 10 * scale);
 
   // Soda
-  drawPixelSprite(ctx, x + 240, y, 60, PROP_SPRITES["soda_can"]);
+  drawPixelSprite(ctx, x + 240 * scale, y, itemWidth, PROP_SPRITES["soda_can"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("苏打水", x + 250, y - 10);
+  ctx.fillText("苏打水", x + 250 * scale, y - 10 * scale);
 
   // Lemon (swapped with tonic on table)
-  drawPixelSprite(ctx, x + 340, y, 60, PROP_SPRITES["lemon_slice"]);
+  drawPixelSprite(ctx, x + 340 * scale, y, itemWidth, PROP_SPRITES["lemon_slice"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("柠檬", x + 355, y - 10);
+  ctx.fillText("柠檬", x + 355 * scale, y - 10 * scale);
 
   // Day-3 unlock overlays for lemon/soda
   if (!state.inventory.includes("soda_water")) {
-    drawLockedOverlay(ctx, x + 240, y, 60, 60);
+    drawLockedOverlay(ctx, x + 240 * scale, y, itemWidth, itemWidth);
   }
   if (!state.inventory.includes("lemon_juice")) {
-    drawLockedOverlay(ctx, x + 340, y, 60, 60);
+    drawLockedOverlay(ctx, x + 340 * scale, y, itemWidth, itemWidth);
   }
 
-  drawPixelSprite(ctx, x + 440, y, 60, PROP_SPRITES["bitters_bottle"]);
+  drawPixelSprite(ctx, x + 440 * scale, y, itemWidth, PROP_SPRITES["bitters_bottle"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("苦精", x + 450, y - 10);
+  ctx.fillText("苦精", x + 450 * scale, y - 10 * scale);
   if (!state.inventory.includes("bitters")) {
-    drawLockedOverlay(ctx, x + 440, y, 60, 60);
+    drawLockedOverlay(ctx, x + 440 * scale, y, itemWidth, itemWidth);
   }
 }
 
-function drawStirTools(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
+function drawStirTools(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState, scale = 1) {
+  const labelFontSize = Math.max(10, Math.round(14 * scale));
   ctx.strokeStyle = "#888";
-  ctx.lineWidth = 4;
+  ctx.lineWidth = Math.max(2, 4 * scale);
 
   // 顺搅 (CW) - Vertical stick
   ctx.beginPath();
-  ctx.moveTo(x + 30, y);
-  ctx.lineTo(x + 30, y + 60);
+  ctx.moveTo(x + 30 * scale, y);
+  ctx.lineTo(x + 30 * scale, y + 60 * scale);
   ctx.stroke();
 
   // 逆搅 (CCW) - Vertical stick
   ctx.beginPath();
-  ctx.moveTo(x + 110, y);
-  ctx.lineTo(x + 110, y + 60);
+  ctx.moveTo(x + 110 * scale, y);
+  ctx.lineTo(x + 110 * scale, y + 60 * scale);
   ctx.stroke();
 
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 14px Arial";
-  ctx.fillText("顺搅", x + 15, y + 80);
-  ctx.fillText("逆搅", x + 95, y + 80);
+  ctx.font = `bold ${labelFontSize}px Arial`;
+  ctx.fillText("顺搅", x + 15 * scale, y + 80 * scale);
+  ctx.fillText("逆搅", x + 95 * scale, y + 80 * scale);
 
   if (!state.inventory.includes("stir_tool")) {
-    drawLockedOverlay(ctx, x, y - 10, 160, 100);
+    drawLockedOverlay(ctx, x, y - 10 * scale, 160 * scale, 100 * scale);
   }
 }
 
-function drawAdvancedTools(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState) {
+function drawAdvancedTools(ctx: CanvasRenderingContext2D, x: number, y: number, state: GameState, scale = 1) {
+  const iconWidth = 56 * scale;
+  const labelFontSize = Math.max(10, Math.round(14 * scale));
   // Shaker - Aligned with row above
-  drawPixelSprite(ctx, x, y, 56, PROP_SPRITES["shaker"]);
+  drawPixelSprite(ctx, x, y, iconWidth, PROP_SPRITES["shaker"]);
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 14px Arial";
-  ctx.fillText("摇壶", x + 10, y - 10);
+  ctx.font = `bold ${labelFontSize}px Arial`;
+  ctx.fillText("摇壶", x + 10 * scale, y - 10 * scale);
   if (!state.inventory.includes("shake_tool")) {
-    drawLockedOverlay(ctx, x, y, 56, 56);
+    drawLockedOverlay(ctx, x, y, iconWidth, iconWidth);
   }
 
   // Measure Cup - Aligned with row above
-  drawPixelSprite(ctx, x + 100, y, 56, PROP_SPRITES["dropper"]);
+  drawPixelSprite(ctx, x + 100 * scale, y, iconWidth, PROP_SPRITES["dropper"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("量杯", x + 110, y - 10);
+  ctx.fillText("量杯", x + 110 * scale, y - 10 * scale);
   if (!state.inventory.includes("measure_cup")) {
-    drawLockedOverlay(ctx, x + 100, y, 56, 56);
+    drawLockedOverlay(ctx, x + 100 * scale, y, iconWidth, iconWidth);
   }
 
   // Flame Tool - Aligned with row above
-  drawPixelSprite(ctx, x + 200, y, 56, PROP_SPRITES["flame_tool"]);
+  drawPixelSprite(ctx, x + 200 * scale, y, iconWidth, PROP_SPRITES["flame_tool"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("喷枪", x + 210, y - 10);
+  ctx.fillText("喷枪", x + 210 * scale, y - 10 * scale);
   if (!state.inventory.includes("flame_tool")) {
-    drawLockedOverlay(ctx, x + 200, y, 56, 56);
+    drawLockedOverlay(ctx, x + 200 * scale, y, iconWidth, iconWidth);
   }
 }
 

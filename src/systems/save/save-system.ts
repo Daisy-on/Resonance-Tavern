@@ -43,6 +43,7 @@ export function loadGameState(): GameState | null {
       console.warn(`[SaveSystem] Outdated save file (Version ${parsed.version}). Migrating...`);
     }
 
+    merged.lastScore = typeof parsed.lastScore === "number" ? parsed.lastScore : defaultState.lastScore;
     merged.maxOrdersPerDay = getMaxOrdersPerDay(merged.day);
 
     return merged;
