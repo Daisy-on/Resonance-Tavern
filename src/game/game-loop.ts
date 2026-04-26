@@ -313,9 +313,9 @@ export function createGameLoop(input: GameLoopInput) {
     // Matches drawAdditivesSet(ctx, w - 620, propY - 20, state)
     if (isInside(x, y, w - 620, propY - 30, 520, 120)) {
       if (x < w - 500) currentState.draggedItem = canDragAction("add_syrup") ? "add_syrup" : null;
-      else if (x < w - 380) currentState.draggedItem = canDragAction("add_lemon") ? "add_lemon" : null;
+      else if (x < w - 380) currentState.draggedItem = canDragAction("add_tonic") ? "add_tonic" : null;
       else if (x < w - 280) currentState.draggedItem = canDragAction("add_soda") ? "add_soda" : null;
-      else if (x < w - 180) currentState.draggedItem = canDragAction("add_tonic") ? "add_tonic" : null;
+      else if (x < w - 180) currentState.draggedItem = canDragAction("add_lemon") ? "add_lemon" : null;
       else currentState.draggedItem = canDragAction("add_bitters") ? "add_bitters" : null;
       return;
     }

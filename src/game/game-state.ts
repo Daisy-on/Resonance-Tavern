@@ -81,8 +81,8 @@ export function createDefaultGameState(): GameState {
     version: 2,
     day: 1,
     resources: {
-      money: 200,
-      power: 30,
+      money: 150,
+      power: 24,
       rating: 50,
     },
     dailyLedger: {
@@ -93,13 +93,13 @@ export function createDefaultGameState(): GameState {
       ordersToday: 0,
     },
     balanceConfig: {
-      baseOrderPrice: 18,
+      baseOrderPrice: 12,
       scoreBonusTable: {
-        perfect: 20,
-        high: 12,
-        normal: 6,
-        low: 0,
-        fail: -4,
+        perfect: 14,
+        high: 8,
+        normal: 3,
+        low: -2,
+        fail: -8,
       },
     },
     orderFlow: "idle",

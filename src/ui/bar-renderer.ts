@@ -298,20 +298,28 @@ function drawAdditivesSet(ctx: CanvasRenderingContext2D, x: number, y: number, s
   ctx.font = "bold 14px Arial";
   ctx.fillText("糖浆", x + 5, y - 10);
 
-  // Lemon - Aligned with other props
-  drawPixelSprite(ctx, x + 105, y, 60, PROP_SPRITES["lemon_slice"]);
+  // Tonic (swapped with lemon on table)
+  drawPixelSprite(ctx, x + 105, y, 60, PROP_SPRITES["tonic_vial"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("柠檬", x + 120, y - 10);
+  ctx.fillText("捣拌棒", x + 110, y - 10);
 
   // Soda
   drawPixelSprite(ctx, x + 240, y, 60, PROP_SPRITES["soda_can"]);
   ctx.fillStyle = "#fff";
   ctx.fillText("苏打水", x + 250, y - 10);
 
-  // Frequency reducer (Day 1)
-  drawPixelSprite(ctx, x + 340, y, 60, PROP_SPRITES["tonic_vial"]);
+  // Lemon (swapped with tonic on table)
+  drawPixelSprite(ctx, x + 340, y, 60, PROP_SPRITES["lemon_slice"]);
   ctx.fillStyle = "#fff";
-  ctx.fillText("捣拌棒", x + 345, y - 10);
+  ctx.fillText("柠檬", x + 355, y - 10);
+
+  // Day-3 unlock overlays for lemon/soda
+  if (!state.inventory.includes("soda_water")) {
+    drawLockedOverlay(ctx, x + 240, y, 60, 60);
+  }
+  if (!state.inventory.includes("lemon_juice")) {
+    drawLockedOverlay(ctx, x + 340, y, 60, 60);
+  }
 
   drawPixelSprite(ctx, x + 440, y, 60, PROP_SPRITES["bitters_bottle"]);
   ctx.fillStyle = "#fff";
